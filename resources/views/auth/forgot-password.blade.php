@@ -1,4 +1,4 @@
-<x-layouts.app title="Forgot Password">
+<x-layouts.auth title="Forgot Password">
     <div class="max-w-md mx-auto">
         <div class="bg-white/95 rounded-2xl shadow-2xl p-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Forgot your password?</h2>
@@ -27,4 +27,4 @@
             </p>
         </div>
     </div>
-</x-layouts.app>
+</x-layouts.auth>

@@ -1,27 +1,52 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\AiChatController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
+// Chuyển hướng trang chủ về login
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+// Guest Routes (Chưa đăng nhập)
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+});
 
-Route::get('forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+// Auth Routes (Đã đăng nhập)
+Route::middleware('auth')->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
 
-Route::get('reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
-Route::post('reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+    // AI Chat (Database-only)
+    Route::post('/ai/chat', [AiChatController::class, 'chat'])
+        ->middleware('throttle:30,1')
+        ->name('ai.chat');
+    
+    // Quản lý Users
+    Route::get('users', [UserController::class, 'index'])->name('users.index');
+    Route::resource('users', UserController::class)
+        ->except(['index', 'show'])
+        ->middleware('admin');
+    
+    // Hồ sơ cá nhân
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
+    // Đăng xuất
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+});
 
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register'])->name('register.post');
-
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-Route::get('/dashboard', [AuthController::class, 'dashboard'])->middleware('auth')->name('dashboard');
+Route::middleware('auth')->group(function () {
+    // Trang hiển thị hồ sơ
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    
+    // Xử lý cập nhật (Patch)
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+});
