@@ -15,11 +15,6 @@
     <div class="space-y-8">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex items-center gap-4">
-                <a href="{{ route('dashboard') }}" class="inline-flex h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-                    <span aria-hidden="true">←</span>
-                    {{ __('messages.products.back') }}
-                </a>
-
                 <div>
                     <h2 class="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">{{ __('messages.products.title') }}</h2>
                     <p class="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{{ __('messages.products.description') }}</p>
