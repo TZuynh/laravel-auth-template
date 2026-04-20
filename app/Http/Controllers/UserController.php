@@ -2,53 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\StoreUserRequest;
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-   public function index(Request $request)
-{
-    $q = trim((string) $request->query('q', ''));
+    public function index(Request $request, UserRepositoryInterface $userRepository)
+    {
+        $q = trim((string) $request->query('q', ''));
+        $users = $userRepository->paginateBySearch($q, 10);
 
-    $usersQuery = User::query();
-
-    if ($q !== '') {
-        $qLower = mb_strtolower($q);
-        $roleFilter = null;
-        
-        if (in_array($qLower, ['admin', 'administrator'], true)) {
-            $roleFilter = 'administrator';
-        } elseif ($qLower === 'staff') {
-            $roleFilter = 'staff';
-        }
-
-        $usersQuery->where(function ($query) use ($q, $roleFilter) {
-            // Tìm theo ID nếu là số
-            if (ctype_digit($q)) {
-                $query->orWhere('id', (int) $q);
-            }
-
-            // Tìm theo tên hoặc email
-            $query->orWhere('name', 'like', '%' . $q . '%')
-                  ->orWhere('email', 'like', '%' . $q . '%');
-
-            // Tìm theo vai trò nếu khớp từ khóa
-            if ($roleFilter) {
-                $query->orWhere('role', $roleFilter);
-            }
-        });
-    }
-
-    // Sắp xếp theo ID giảm dần (ID lớn nhất lên đầu)
-    // Nếu muốn ID nhỏ nhất lên đầu, hãy đổi 'desc' thành 'asc'
-    $users = $usersQuery->orderBy('id', 'desc')
-                        ->paginate(10)
-                        ->withQueryString();
-
-    return view('users.index', compact('users', 'q'));
+        return view('users.index', compact('users', 'q'));
     }
 
     public function create()
@@ -56,21 +23,9 @@ class UserController extends Controller
         return view('users.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreUserRequest $request, UserRepositoryInterface $userRepository)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'role' => ['required', Rule::in(['administrator', 'staff'])],
-            'password' => ['required', 'min:6', 'confirmed'],
-        ]);
-
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'role' => $request->role,
-            'password' => Hash::make($request->password),
-        ]);
+        $userRepository->create($request->validated());
 
         return redirect()->route('users.index')->with('success', 'Created!');
     }
@@ -80,38 +35,17 @@ class UserController extends Controller
         return view('users.edit', compact('user'));
     }
 
-   public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user, UserRepositoryInterface $userRepository)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => [
-                'required',
-                'email',
-                Rule::unique('users')->ignore($user->id),
-            ],
-            'role' => ['required', Rule::in(['administrator', 'staff'])],
-            'password' => 'nullable|min:6|confirmed', 
-        ]);
-
-        $data = [
-            'name' => $request->name,
-            'email' => $request->email,
-            'role' => $request->role,
-        ];
-
-        // Chỉ cập nhật mật khẩu nếu người dùng có nhập vào
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-        }
-
-        $user->update($data);
+        $userRepository->update($user, $request->validated());
 
         return redirect()->route('users.index')->with('success', 'Cập nhật thành công!');
     }
 
-    public function destroy(User $user)
+    public function destroy(User $user, UserRepositoryInterface $userRepository)
     {
-        $user->delete();
+        $userRepository->delete($user);
+
         return back()->with('success', 'Deleted!');
     }
 }

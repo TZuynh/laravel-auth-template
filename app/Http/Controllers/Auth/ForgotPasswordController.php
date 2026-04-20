@@ -2,8 +2,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Repositories\Contracts\AuthRepositoryInterface;
 
 class ForgotPasswordController extends Controller
 {
@@ -12,15 +12,11 @@ class ForgotPasswordController extends Controller
         return view('auth.forgot-password');
     }
 
-    public function sendResetLinkEmail(Request $request)
+    public function sendResetLinkEmail(ForgotPasswordRequest $request, AuthRepositoryInterface $authRepository)
     {
-        $request->validate(['email' => 'required|email']);
+        $status = $authRepository->sendResetLink($request->only('email'));
 
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
-
-        return $status === Password::RESET_LINK_SENT
+        return $status === 'passwords.sent'
             ? back()->with(['status' => __($status)])
             : back()->withErrors(['email' => __($status)]);
     }

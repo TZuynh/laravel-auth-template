@@ -42,11 +42,3 @@ Route::middleware('auth')->group(function () {
     // Đăng xuất
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
-
-Route::middleware('auth')->group(function () {
-    // Trang hiển thị hồ sơ
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    
-    // Xử lý cập nhật (Patch)
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-});
