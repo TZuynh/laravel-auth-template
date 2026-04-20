@@ -27,7 +27,7 @@ class AuthController extends Controller
         }
 
         return back()->withErrors([
-            'email' => 'Thông tin đăng nhập không chính xác.',
+            'email' => __('messages.auth.failed'),
         ])->onlyInput('email');
     }
 
@@ -49,7 +49,7 @@ class AuthController extends Controller
     {
         $authRepository->logout($request);
 
-        return redirect()->route('login');
+        return redirect()->route('login')->with('success', __('messages.auth.logged_out'));
     }
 
     public function dashboard()

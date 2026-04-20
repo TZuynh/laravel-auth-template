@@ -32,6 +32,7 @@ class AiChatService
             '- Chỉ trả lời dựa trên "Database Context" được cung cấp (schema + số liệu tổng quan).',
             '- Tự động hiểu các thuật ngữ tiếng Việt sau đây tương đương với database:',
             '  + "người dùng", "thành viên", "tài khoản" -> bảng `users`',
+            '  + "sản phẩm", "product", "products" -> bảng `products`',
             '  + "tên", "họ tên" -> cột `name`',
             '  + "mật khẩu", "pass" -> cột `password`',
             '  + "quyền", "vai trò" -> cột `role`',
@@ -48,9 +49,9 @@ class AiChatService
 
         foreach ($history as $turn) {
             $contents[] = [
-                'role' => $turn['role'] === 'assistant' ? 'model' : 'user',
+                'role' => ($turn['role'] ?? '') === 'assistant' ? 'model' : 'user',
                 'parts' => [
-                    ['text' => $turn['content']],
+                    ['text' => (string) ($turn['content'] ?? '')],
                 ],
             ];
         }
@@ -114,6 +115,8 @@ class AiChatService
             'dữ liệu', 'data', 'record', 'row', 'dòng', 'bản ghi',
             'sql', 'select', 'insert', 'update', 'delete', 'xóa', 'thêm', 'sửa',
             'user', 'users', 'người dùng', 'thành viên', 'tài khoản', 'account',
+            'product', 'products', 'sản phẩm', 'sku', 'giá', 'stock', 'tồn kho',
+            'category', 'danh mục', 'brand', 'thương hiệu', 'featured', 'synced to meta',
             'email', 'e-mail', 'thư',
             'role', 'quyền', 'vai trò',
             'password', 'mật khẩu', 'pass',
@@ -157,12 +160,47 @@ class AiChatService
     private function tryHandleDeterministicDatabaseQuestion(string $message, array $schemaContext): ?string
     {
         $lower = mb_strtolower(trim($message));
+        $tables = $schemaContext['tables'] ?? [];
+
         $mentionsUsers = (bool) preg_match('/(users?|người\s*dùng|thành\s*viên|tài\s*khoản)/u', $lower);
+        $mentionsProducts = (bool) preg_match('/(products?|sản\s*phẩm|sku|giá|stock|tồn\s*kho|danh\s*mục|thương\s*hiệu|featured|synced\s*to\s*meta)/u', $lower);
         $asksCount = (bool) preg_match('/(bao\s*nhiêu|tổng\s*số|số\s*lượng|đếm|count|mấy)/u', $lower);
 
         if ($mentionsUsers && $asksCount) {
             $count = DB::table('users')->count();
             return "Hiện tại hệ thống có **{$count}** người dùng (tài khoản).";
+        }
+
+        if ($mentionsProducts && $asksCount && in_array('products', $tables, true)) {
+            $count = DB::table('products')->count();
+            return "Hiện tại hệ thống có **{$count}** sản phẩm.";
+        }
+
+        if ($mentionsProducts && preg_match('/(liệt\s*kê|danh\s*sách|xem\s*tất\s*cả|show|list|sample)/u', $lower) && in_array('products', $tables, true)) {
+            $rows = DB::table('products')
+                ->select(['id', 'name', 'sku', 'price', 'stock', 'category', 'brand', 'status'])
+                ->orderBy('id', 'asc')
+                ->limit(10)
+                ->get();
+
+            if ($rows->isEmpty()) {
+                return 'Bảng `products` hiện chưa có dữ liệu.';
+            }
+
+            $lines = [];
+            foreach ($rows as $row) {
+                $lines[] = "#{$row->id} {$row->name} | SKU: {$row->sku} | Giá: " . number_format((float) ($row->price ?? 0), 2) . " | Stock: " . (int) ($row->stock ?? 0) . " | {$row->status}";
+            }
+
+            $total = DB::table('products')->count();
+            return "Danh sách sản phẩm mẫu (tối đa 10/{$total}):\n" . implode("\n", $lines);
+        }
+
+        if ($mentionsProducts && preg_match('/(active|inactive|đang\s*hoạt\s*động|ngưng|trạng\s*thái)/u', $lower) && in_array('products', $tables, true)) {
+            $active = DB::table('products')->where('status', 'active')->count();
+            $inactive = DB::table('products')->where('status', 'inactive')->count();
+
+            return "Sản phẩm đang active: **{$active}**, inactive: **{$inactive}**.";
         }
 
         $asksEmail = (bool) preg_match('/(email|e-mail)/u', $lower);
@@ -220,6 +258,17 @@ class AiChatService
 
             if (in_array('users', $tables, true)) {
                 $lines[] = 'users_exact_rows: ' . DB::table('users')->count();
+            }
+
+            if (in_array('products', $tables, true)) {
+                $productCount = DB::table('products')->count();
+                $activeProducts = DB::table('products')->where('status', 'active')->count();
+                $featuredProducts = DB::table('products')->where('featured', true)->count();
+
+                $lines[] = 'products_exact_rows: ' . $productCount;
+                $lines[] = 'products_active_rows: ' . $activeProducts;
+                $lines[] = 'products_featured_rows: ' . $featuredProducts;
+                $lines[] = 'products_sample_fields: id, name, sku, image, price, stock, category, brand, status, product_form, published_at, featured, synced_to_meta';
             }
 
             $lines[] = '';

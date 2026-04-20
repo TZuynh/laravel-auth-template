@@ -27,7 +27,7 @@ class UserController extends Controller
     {
         $userRepository->create($request->validated());
 
-        return redirect()->route('users.index')->with('success', 'Created!');
+        return redirect()->route('users.index')->with('success', __('messages.user_created'));
     }
 
     public function edit(User $user)
@@ -39,13 +39,13 @@ class UserController extends Controller
     {
         $userRepository->update($user, $request->validated());
 
-        return redirect()->route('users.index')->with('success', 'Cập nhật thành công!');
+        return redirect()->route('users.index')->with('success', __('messages.user_updated'));
     }
 
     public function destroy(User $user, UserRepositoryInterface $userRepository)
     {
         $userRepository->delete($user);
 
-        return back()->with('success', 'Deleted!');
+        return back()->with('success', __('messages.user_deleted'));
     }
 }

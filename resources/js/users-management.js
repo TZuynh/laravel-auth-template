@@ -46,32 +46,32 @@ function initUsersDeletePopup() {
     });
 }
 
-function initUsersSearch() {
-    const form = document.querySelector('[data-users-search]');
-    if (!form) return;
-    const input = form.querySelector('input[name="q"]');
-    if (!input) return;
+function initAutoSearchForms() {
+    document.querySelectorAll('form[data-auto-search]').forEach((form) => {
+        const input = form.querySelector('input[name="q"]');
+        if (!input) return;
 
-    let timer = null;
-    let lastValue = input.value;
+        let timer = null;
+        let lastValue = input.value;
 
-    input.addEventListener('input', () => {
-        const value = input.value;
-        if (timer) window.clearTimeout(timer);
-        timer = window.setTimeout(() => {
-            if (value === lastValue) return;
-            lastValue = value;
-            form.requestSubmit ? form.requestSubmit() : form.submit();
-        }, 350);
+        input.addEventListener('input', () => {
+            const value = input.value;
+            if (timer) window.clearTimeout(timer);
+            timer = window.setTimeout(() => {
+                if (value === lastValue) return;
+                lastValue = value;
+                form.requestSubmit ? form.requestSubmit() : form.submit();
+            }, 350);
+        });
     });
 }
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         initUsersDeletePopup();
-        initUsersSearch();
+        initAutoSearchForms();
     });
 } else {
     initUsersDeletePopup();
-    initUsersSearch();
+    initAutoSearchForms();
 }

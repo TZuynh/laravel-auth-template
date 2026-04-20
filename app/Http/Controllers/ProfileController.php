@@ -23,6 +23,6 @@ class ProfileController extends Controller
             $request->file('avatar')
         );
 
-        return back()->with('success', 'Hồ sơ của bạn đã được làm mới thành công! ✨');
+        return back()->with('success', __('messages.profile_updated'));
     }
 }

@@ -1,136 +1,139 @@
-<x-layouts.app title="Executive Dashboard">
-    <div class="max-w-7xl mx-auto space-y-10 pb-12">
-        
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<x-layouts.app :title="__('messages.dashboard.page_title')">
+    <div class="mx-auto max-w-7xl space-y-8 pb-12">
+        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-                <nav class="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">
-                    <span class="bg-indigo-600 w-2 h-2 rounded-full animate-pulse"></span>
-                    Hệ thống trực tuyến
-                </nav>
-                <h1 class="text-4xl font-black text-slate-900 tracking-tighter">Tổng quan hệ thống</h1>
+                <div class="mb-2 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-indigo-500">
+                    <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
+                    {{ __('messages.dashboard.eyebrow') }}
+                </div>
+                <h1 class="text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                    {{ __('messages.dashboard.title') }}
+                </h1>
             </div>
-            <div class="flex items-center gap-3 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
-                <button class="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-all">Xuất dữ liệu</button>
-                <button class="px-5 py-2 text-sm font-bold bg-slate-900 text-white rounded-xl shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all">
-                    Tạo báo cáo mới
+            <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/80 p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+                <button class="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                    {{ __('messages.dashboard.export_data') }}
+                </button>
+                <button class="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500">
+                    {{ __('messages.dashboard.new_report') }}
                 </button>
             </div>
         </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="group cursor-pointer">
-                <div class="flex items-end justify-between mb-4">
-                    <p class="text-sm font-bold text-slate-500 uppercase tracking-tight">Doanh thu tháng</p>
-                    <span class="text-emerald-500 text-xs font-black bg-emerald-50 px-2 py-1 rounded-lg">+18.4%</span>
-                </div>
-                <div class="flex items-baseline gap-2">
-                    <h2 class="text-5xl font-black text-slate-900 tracking-tighter">$42,850</h2>
-                    <span class="text-slate-400 font-medium italic">USD</span>
-                </div>
-                <div class="mt-6 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full bg-slate-900 w-3/4 group-hover:bg-indigo-600 transition-all duration-500"></div>
-                </div>
-            </div>
 
-            <div class="group cursor-pointer">
-                <div class="flex items-end justify-between mb-4">
-                    <p class="text-sm font-bold text-slate-500 uppercase tracking-tight">Người dùng active</p>
-                    <span class="text-indigo-500 text-xs font-black bg-indigo-50 px-2 py-1 rounded-lg">Mục tiêu: 2k</span>
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <section class="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+                <div class="mb-4 flex items-end justify-between">
+                    <p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{{ __('messages.dashboard.month_revenue') }}</p>
+                    <span class="rounded-lg bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/10">+18.4%</span>
                 </div>
                 <div class="flex items-baseline gap-2">
-                    <h2 class="text-5xl font-black text-slate-900 tracking-tighter">1,842</h2>
-                    <span class="text-slate-400 font-medium italic">User</span>
+                    <h2 class="text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">$42,850</h2>
+                    <span class="font-medium italic text-slate-400">USD</span>
+                </div>
+                <div class="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div class="h-full w-3/4 rounded-full bg-slate-900 dark:bg-indigo-500"></div>
+                </div>
+            </section>
+
+            <section class="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+                <div class="mb-4 flex items-end justify-between">
+                    <p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{{ __('messages.dashboard.active_users') }}</p>
+                    <span class="rounded-lg bg-indigo-50 px-2 py-1 text-xs font-black text-indigo-600 dark:bg-indigo-500/10">{{ __('messages.dashboard.target') }}: 2k</span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <h2 class="text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">1,842</h2>
+                    <span class="font-medium italic text-slate-400">User</span>
                 </div>
                 <div class="mt-6 flex -space-x-3 overflow-hidden">
-                    @foreach([1,2,3,4,5] as $i)
-                        <img class="inline-block h-8 w-8 rounded-full ring-4 ring-slate-50 bg-slate-200" src="https://i.pravatar.cc/150?u={{$i}}" alt="">
+                    @foreach ([1, 2, 3, 4, 5] as $index)
+                        <img class="h-8 w-8 rounded-full ring-4 ring-white dark:ring-slate-900" src="https://i.pravatar.cc/150?u={{ $index }}" alt="">
                     @endforeach
-                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 ring-4 ring-slate-50">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 ring-4 ring-white dark:bg-indigo-600 dark:ring-slate-900">
                         <span class="text-[10px] font-bold text-white">+12</span>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="group cursor-pointer">
-                <div class="flex items-end justify-between mb-4">
-                    <p class="text-sm font-bold text-slate-500 uppercase tracking-tight">Tỷ lệ chuyển đổi</p>
-                    <span class="text-rose-500 text-xs font-black bg-rose-50 px-2 py-1 rounded-lg">-2.1%</span>
+            <section class="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+                <div class="mb-4 flex items-end justify-between">
+                    <p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{{ __('messages.dashboard.conversion_rate') }}</p>
+                    <span class="rounded-lg bg-rose-50 px-2 py-1 text-xs font-black text-rose-600 dark:bg-rose-500/10">-2.1%</span>
                 </div>
                 <div class="flex items-baseline gap-2">
-                    <h2 class="text-5xl font-black text-slate-900 tracking-tighter">14.2</h2>
-                    <span class="text-slate-400 font-medium italic">%</span>
+                    <h2 class="text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100">14.2</h2>
+                    <span class="font-medium italic text-slate-400">%</span>
                 </div>
-                <div class="mt-6 flex gap-1 items-end h-8">
-                    @foreach([40,70,50,90,60,80,100] as $h)
-                        <div class="flex-1 bg-slate-200 rounded-sm group-hover:bg-rose-400 transition-all duration-500" style="height: {{$h}}%"></div>
+                <div class="mt-6 flex h-8 items-end gap-1">
+                    @foreach ([40, 70, 50, 90, 60, 80, 100] as $height)
+                        <div class="flex-1 rounded-sm bg-slate-200 dark:bg-slate-700" style="height: {{ $height }}%"></div>
                     @endforeach
                 </div>
-            </div>
+            </section>
         </div>
 
-        <div class="grid grid-cols-12 gap-8">
-            
-            <div class="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)]">
-                <div class="flex items-center justify-between mb-10">
+        <div class="grid grid-cols-12 gap-6">
+            <section class="col-span-12 rounded-[2.5rem] border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 lg:col-span-8 lg:p-8">
+                <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h3 class="text-2xl font-black text-slate-900">Phân tích dòng tiền</h3>
-                        <p class="text-slate-400 text-sm">Dữ liệu được cập nhật 5 phút trước</p>
+                        <h3 class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ __('messages.dashboard.flow_analysis') }}</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('messages.dashboard.updated_5m') }}</p>
                     </div>
-                    <div class="flex gap-2 bg-slate-50 p-1.5 rounded-2xl">
-                        <button class="px-6 py-2 bg-white shadow-sm rounded-xl text-xs font-black text-slate-900">Income</button>
-                        <button class="px-6 py-2 text-xs font-bold text-slate-400 hover:text-slate-600">Expenses</button>
+                    <div class="inline-flex rounded-2xl bg-slate-50 p-1.5 dark:bg-slate-800">
+                        <button class="rounded-xl bg-white px-5 py-2 text-xs font-black text-slate-900 shadow-sm dark:bg-slate-100">{{ __('messages.dashboard.income') }}</button>
+                        <button class="rounded-xl px-5 py-2 text-xs font-bold text-slate-400 dark:text-slate-400">{{ __('messages.dashboard.expenses') }}</button>
                     </div>
                 </div>
-                <div class="h-[400px]">
+                <div class="h-[380px]">
                     <canvas id="ultraChart"></canvas>
                 </div>
-            </div>
+            </section>
 
-            <div class="col-span-12 lg:col-span-4 space-y-8">
-                <div class="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden group shadow-2xl shadow-indigo-200">
+            <aside class="col-span-12 space-y-6 lg:col-span-4">
+                <section class="relative overflow-hidden rounded-[2.5rem] bg-indigo-600 p-8 text-white shadow-2xl shadow-indigo-200/40 dark:shadow-none">
                     <div class="relative z-10">
-                        <h4 class="text-3xl font-black leading-tight mb-4">Sẵn sàng để bùng nổ?</h4>
-                        <p class="text-indigo-100 text-sm mb-6 opacity-80">Khám phá các tính năng AI mới nhất để tối ưu hóa quy trình làm việc.</p>
-                        <a href="#" class="inline-block bg-white text-indigo-600 px-8 py-3 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all">Thử ngay</a>
+                        <h4 class="mb-4 text-3xl font-black leading-tight">{{ __('messages.dashboard.ready') }}</h4>
+                        <p class="mb-6 text-sm text-indigo-100/90">{{ __('messages.dashboard.explore_ai') }}</p>
+                        <a href="#" class="inline-flex rounded-2xl bg-white px-8 py-3 text-sm font-black text-indigo-600 transition-colors hover:bg-indigo-50">
+                            {{ __('messages.dashboard.try_now') }}
+                        </a>
                     </div>
-                    <svg class="absolute right-[-10%] bottom-[-10%] w-48 h-48 text-white opacity-10 group-hover:rotate-12 transition-transform duration-700" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
-                </div>
+                    <svg class="absolute right-[-10%] bottom-[-10%] h-48 w-48 text-white/10" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                    </svg>
+                </section>
 
-                <div class="bg-white border border-slate-200 rounded-[2.5rem] p-8">
-                    <h4 class="text-xl font-black text-slate-900 mb-6">Giao dịch gần đây</h4>
+                <section class="rounded-[2.5rem] border border-slate-200 bg-white/90 p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+                    <h4 class="mb-6 text-xl font-black text-slate-900 dark:text-slate-100">{{ __('messages.dashboard.recent_transactions') }}</h4>
                     <div class="space-y-6">
-                        @foreach([
-                            ['name' => 'Figma Pro Subscription', 'type' => 'Software', 'amount' => '-$15.00'],
-                            ['name' => 'Payment from Client', 'type' => 'Invoice', 'amount' => '+$2,400.00'],
-                            ['name' => 'Amazon AWS Cloud', 'type' => 'Infrastructure', 'amount' => '-$120.50']
+                        @foreach ([
+                            ['name' => 'Figma Pro Subscription', 'type' => __('messages.dashboard.software'), 'amount' => '-$15.00'],
+                            ['name' => 'Payment from Client', 'type' => __('messages.dashboard.invoice'), 'amount' => '+$2,400.00'],
+                            ['name' => 'Amazon AWS Cloud', 'type' => __('messages.dashboard.infrastructure'), 'amount' => '-$120.50'],
                         ] as $item)
-                        <div class="flex items-center justify-between group cursor-pointer">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                                    <div class="w-2 h-2 bg-slate-400 rounded-full group-hover:bg-indigo-500"></div>
+                            <div class="flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800">
+                                        <div class="h-2 w-2 rounded-full bg-slate-400 dark:bg-slate-500"></div>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800 dark:text-slate-100">{{ $item['name'] }}</p>
+                                        <p class="text-xs font-medium text-slate-400">{{ $item['type'] }}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p class="text-sm font-black text-slate-800">{{ $item['name'] }}</p>
-                                    <p class="text-xs text-slate-400 font-medium">{{ $item['type'] }}</p>
-                                </div>
+                                <p class="text-sm font-black {{ str_starts_with($item['amount'], '+') ? 'text-emerald-500' : 'text-slate-900 dark:text-slate-100' }}">
+                                    {{ $item['amount'] }}
+                                </p>
                             </div>
-                            <p class="text-sm font-black {{ str_contains($item['amount'], '+') ? 'text-emerald-500' : 'text-slate-900' }}">
-                                {{ $item['amount'] }}
-                            </p>
-                        </div>
                         @endforeach
                     </div>
-                </div>
-            </div>
-
+                </section>
+            </aside>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const ctx = document.getElementById('ultraChart').getContext('2d');
-        
-        // Tạo Gradient xịn hơn
         const gradientStroke = ctx.createLinearGradient(0, 230, 0, 50);
         gradientStroke.addColorStop(1, 'rgba(99, 102, 241, 0.2)');
         gradientStroke.addColorStop(0.2, 'rgba(99, 102, 241, 0.0)');
@@ -141,7 +144,7 @@
                 labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
                 datasets: [{
                     label: 'Premium Data',
-                    borderColor: '#0f172a', // Màu Slate-900 cực sang
+                    borderColor: '#0f172a',
                     borderWidth: 4,
                     pointRadius: 0,
                     pointHoverRadius: 8,
@@ -172,5 +175,4 @@
             }
         });
     </script>
-
 </x-layouts.app>
