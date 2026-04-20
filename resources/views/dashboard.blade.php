@@ -1,5 +1,4 @@
 <x-layouts.app title="Executive Dashboard">
-
     <div class="max-w-7xl mx-auto space-y-10 pb-12">
         
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">

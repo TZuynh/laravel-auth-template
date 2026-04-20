@@ -9,4 +9,5 @@
 <body class="h-full mesh-gradient flex items-center justify-center p-6 antialiased">
     {{ $slot }}
 </body>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </html>

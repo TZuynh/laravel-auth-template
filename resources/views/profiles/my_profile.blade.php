@@ -1,11 +1,24 @@
 <x-layouts.app title="My Profile">
     <div class="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-    @if (session('success'))
-        <div class="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-2xl text-sm font-bold animate-in fade-in zoom-in">
-            {{ session('success') }}
-        </div>
-    @endif
-<form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-12 gap-8">
+        
+        @if (session('success'))
+            <div id="flash-message" 
+                 class="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-2xl text-sm font-bold shadow-sm transition-all duration-500 ease-in-out animate-in fade-in zoom-in sticky top-4 z-50">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-emerald-500 text-white p-1 rounded-full">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        {{ session('success') }}
+                    </div>
+                    <button onclick="closeFlashMessage()" class="text-emerald-400 hover:text-emerald-600 transition-colors p-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+        @endif
+
+        <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-12 gap-8">
             @csrf
             @method('PATCH')
 
@@ -83,6 +96,7 @@
     </div>
 
     <script>
+        // 1. Hàm xem trước ảnh khi chọn file
         function previewImage(input) {
             if (input.files && input.files[0]) {
                 var reader = new FileReader();
@@ -92,5 +106,27 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        // 2. Hàm đóng thông báo thủ công
+        function closeFlashMessage() {
+            const flash = document.getElementById('flash-message');
+            if (flash) {
+                flash.style.opacity = '0';
+                flash.style.transform = 'translateY(-20px) scale(0.95)';
+                setTimeout(() => {
+                    flash.remove();
+                }, 500);
+            }
+        }
+
+        // 3. Tự động đóng thông báo sau 3 giây
+        document.addEventListener('DOMContentLoaded', function() {
+            const flash = document.getElementById('flash-message');
+            if (flash) {
+                setTimeout(() => {
+                    closeFlashMessage();
+                }, 3000); // 3000ms = 3 giây
+            }
+        });
     </script>
 </x-layouts.app>
