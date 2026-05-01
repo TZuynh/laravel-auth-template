@@ -5,6 +5,8 @@ namespace Tests\Unit;
 use App\Models\Product;
 use App\Repositories\Eloquent\ProductRepository;
 use App\Services\ProductExportTranslationService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -13,6 +15,7 @@ class ProductRepositoryTest extends TestCase
     public function test_default_english_export_keeps_base_vnd_price_for_round_trip(): void
     {
         config([
+            'services.gemini.api_key' => '',
             'services.product_export.ai_translation' => false,
             'services.product_export.usd_rate' => 2632.84,
         ]);
@@ -27,6 +30,7 @@ class ProductRepositoryTest extends TestCase
     public function test_woocommerce_english_export_includes_currency_metadata(): void
     {
         config([
+            'services.gemini.api_key' => '',
             'services.product_export.ai_translation' => false,
             'services.product_export.usd_rate' => 2632.84,
         ]);
@@ -44,6 +48,7 @@ class ProductRepositoryTest extends TestCase
     public function test_woocommerce_price_keeps_symbol_when_requested(): void
     {
         config([
+            'services.gemini.api_key' => '',
             'services.product_export.ai_translation' => false,
             'services.product_export.usd_rate' => 2632.84,
         ]);
@@ -57,7 +62,10 @@ class ProductRepositoryTest extends TestCase
 
     public function test_import_price_prefers_base_vnd_and_can_convert_usd_metadata(): void
     {
-        config(['services.product_export.usd_rate' => 2632.84]);
+        config([
+            'services.gemini.api_key' => '',
+            'services.product_export.usd_rate' => 2632.84,
+        ]);
 
         $repository = $this->repository();
 
@@ -74,6 +82,68 @@ class ProductRepositoryTest extends TestCase
             'price_regular' => '41.78',
             'price_currency' => 'USD',
         ]]));
+    }
+
+    public function test_english_export_uses_gemini_for_all_export_text_fields(): void
+    {
+        Cache::flush();
+        Http::fake([
+            '*' => Http::response([
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => json_encode([
+                                'name' => 'Men cotton shirt',
+                                'category' => 'Men fashion',
+                                'brand' => 'Viet Brand',
+                                'tags' => 'shirt|summer',
+                                'status' => 'active',
+                                'product_form' => 'simple',
+                                'seo_title' => 'Men cotton shirt',
+                                'seo_description' => 'Soft cotton shirt for summer.',
+                            ]),
+                        ]],
+                    ],
+                ]],
+            ]),
+        ]);
+
+        config([
+            'services.gemini.api_key' => 'test-api-key',
+            'services.gemini.model' => 'gemini-test',
+            'services.product_export.ai_translation' => true,
+            'services.product_export.usd_rate' => 25000,
+        ]);
+
+        $product = new Product([
+            'name' => 'Áo sơ mi cotton nam',
+            'sku' => 'VN-SHIRT-1',
+            'image' => 'products/shirt.jpg',
+            'price' => '125000.00',
+            'stock' => 7,
+            'category' => 'Thời trang nam',
+            'brand' => 'Thương hiệu Việt',
+            'tags' => ['áo sơ mi', 'mùa hè'],
+            'featured' => false,
+            'synced_to_meta' => false,
+            'status' => 'active',
+            'product_form' => 'simple',
+            'seo_title' => 'Áo sơ mi cotton nam',
+            'seo_description' => 'Áo cotton mềm cho mùa hè.',
+        ]);
+        $product->id = 700;
+
+        $export = $this->repository()->transformProductForExport($product, 'en');
+
+        $this->assertSame('Men cotton shirt', $export['name']);
+        $this->assertSame('Men fashion', $export['category']);
+        $this->assertSame('Viet Brand', $export['brand']);
+        $this->assertSame('shirt|summer', $export['tags']);
+        $this->assertSame('Men cotton shirt', $export['seo_title']);
+        $this->assertSame('Soft cotton shirt for summer.', $export['seo_description']);
+        $this->assertSame('5.00', $export['price']);
+        $this->assertSame('125000.00', $export['price_vnd']);
+        Http::assertSentCount(1);
     }
 
     private function repository(): ProductRepository

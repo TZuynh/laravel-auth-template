@@ -7,74 +7,13 @@ use Illuminate\Support\Facades\Http;
 
 class ProductExportTranslationService
 {
-    private const CACHE_VERSION = 'v3';
+    private const CACHE_VERSION = 'v4';
 
     public function translateField(string $field, ?string $value, string $targetLocale): ?string
     {
-        $targetLocale = in_array($targetLocale, ['vi', 'en'], true) ? $targetLocale : 'en';
-        $text = trim((string) $value);
+        $translated = $this->translateFields([$field => $value], $targetLocale);
 
-        if ($text === '') {
-            return null;
-        }
-
-        $cacheKey = 'product-export-translation:' . self::CACHE_VERSION . ':' . $targetLocale . ':' . $field . ':' . sha1($text);
-
-        return Cache::remember($cacheKey, now()->addDays(45), function () use ($field, $text, $targetLocale) {
-            $apiKey = (string) config('services.gemini.api_key', '');
-            $model = (string) config('services.gemini.model', 'gemini-2.5-flash');
-
-            if ($apiKey === '') {
-                return $text;
-            }
-
-            $instruction = implode("\n", [
-                'You translate e-commerce product fields.',
-                'Return plain text only.',
-                'Do not wrap the result in JSON, markdown, or quotes.',
-                'Do not add notes or explanations.',
-                'Preserve brand names, SKUs, and model codes.',
-                $field === 'name'
-                    ? 'Translate the product name into fluent marketplace language.'
-                    : 'Translate the SEO title into fluent marketplace language.',
-                $targetLocale === 'en'
-                    ? 'Translate all visible Vietnamese content into natural English. Output must be fully English unless a token is a brand, SKU, or proper noun.'
-                    : 'Translate all visible English content into natural Vietnamese. Output must be fully Vietnamese unless a token is a brand, SKU, or proper noun.',
-                '',
-                'Field: ' . $field,
-                'Target locale: ' . $targetLocale,
-                'Input:',
-                $text,
-            ]);
-
-            try {
-                $response = Http::timeout(30)
-                    ->acceptJson()
-                    ->contentType('application/json')
-                    ->post("https://generativelanguage.googleapis.com/v1/models/{$model}:generateContent?key={$apiKey}", [
-                        'contents' => [[
-                            'role' => 'user',
-                            'parts' => [
-                                ['text' => $instruction],
-                            ],
-                        ]],
-                    ]);
-            } catch (\Throwable) {
-                return $text;
-            }
-
-            if (!$response->ok()) {
-                return $text;
-            }
-
-            $translated = trim((string) data_get($response->json(), 'candidates.0.content.parts.0.text', ''));
-
-            if ($translated === '') {
-                return $text;
-            }
-
-            return preg_replace('/^```[\w-]*\s*|\s*```$/u', '', $translated) ?: $text;
-        });
+        return $translated[$field] ?? null;
     }
 
     public function translateFields(array $fields, string $targetLocale): array
@@ -86,13 +25,40 @@ class ProductExportTranslationService
             return [];
         }
 
-        $translated = [];
-
-        foreach ($normalized as $field => $value) {
-            $translated[$field] = $this->translateField($field, $value, $targetLocale) ?? $value;
+        if (trim((string) config('services.gemini.api_key', '')) === '') {
+            return $normalized;
         }
 
-        return $translated;
+        $translated = [];
+        $missing = [];
+
+        foreach ($normalized as $field => $value) {
+            $cacheKey = $this->cacheKey($field, $value, $targetLocale);
+
+            if (Cache::has($cacheKey)) {
+                $translated[$field] = (string) Cache::get($cacheKey);
+                continue;
+            }
+
+            $missing[$field] = $value;
+        }
+
+        if ($missing !== []) {
+            $freshTranslations = $this->requestTranslations($missing, $targetLocale);
+
+            foreach ($missing as $field => $value) {
+                $candidate = trim((string) ($freshTranslations[$field] ?? $value));
+                $translated[$field] = $candidate !== '' ? $candidate : $value;
+
+                Cache::put(
+                    $this->cacheKey($field, $value, $targetLocale),
+                    $translated[$field],
+                    now()->addDays(45)
+                );
+            }
+        }
+
+        return array_replace($normalized, $translated);
     }
 
     private function normalizeFields(array $fields): array
@@ -113,5 +79,100 @@ class ProductExportTranslationService
         }
 
         return $normalized;
+    }
+
+    private function cacheKey(string $field, string $value, string $targetLocale): string
+    {
+        return 'product-export-translation:' . self::CACHE_VERSION . ':' . $targetLocale . ':' . $field . ':' . sha1($value);
+    }
+
+    private function requestTranslations(array $fields, string $targetLocale): array
+    {
+        $apiKey = trim((string) config('services.gemini.api_key', ''));
+        $model = trim((string) config('services.gemini.model', 'gemini-2.5-flash'));
+        $timeout = max(1, (int) config('services.gemini.timeout', 8));
+        $connectTimeout = max(1, (int) config('services.gemini.connect_timeout', 3));
+
+        if ($apiKey === '' || $model === '') {
+            return $fields;
+        }
+
+        $instruction = implode("\n", [
+            'You translate e-commerce product export fields.',
+            'Return only a valid JSON object with exactly the same keys as the input object.',
+            'Each JSON value must be a string.',
+            'Do not wrap the JSON in markdown or add explanations.',
+            'Translate every Vietnamese word or phrase into natural English when target_locale is en.',
+            'Translate every English word or phrase into natural Vietnamese when target_locale is vi.',
+            'If a value is already in the target language, return it unchanged.',
+            'Preserve SKUs, URLs, brand names, model codes, numbers, punctuation, and separators such as | or comma.',
+            'For product names, write fluent marketplace-ready copy without adding facts that are not present.',
+            '',
+            'target_locale: ' . $targetLocale,
+            'input_json:',
+            json_encode($fields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+
+        try {
+            $response = Http::connectTimeout($connectTimeout)
+                ->timeout($timeout)
+                ->acceptJson()
+                ->contentType('application/json')
+                ->post("https://generativelanguage.googleapis.com/v1/models/{$model}:generateContent?key={$apiKey}", [
+                    'contents' => [[
+                        'role' => 'user',
+                        'parts' => [
+                            ['text' => $instruction],
+                        ],
+                    ]],
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json',
+                    ],
+                ]);
+        } catch (\Throwable) {
+            return $fields;
+        }
+
+        if (!$response->ok()) {
+            return $fields;
+        }
+
+        $text = trim((string) data_get($response->json(), 'candidates.0.content.parts.0.text', ''));
+        $decoded = $this->decodeTranslationJson($text);
+
+        if ($decoded === []) {
+            return $fields;
+        }
+
+        $translations = [];
+        foreach ($fields as $field => $value) {
+            $candidate = trim((string) ($decoded[$field] ?? $value));
+            $translations[$field] = $candidate !== '' ? $candidate : $value;
+        }
+
+        return $translations;
+    }
+
+    private function decodeTranslationJson(string $text): array
+    {
+        $cleaned = trim($text);
+        $cleaned = preg_replace('/^```(?:json)?\s*|\s*```$/iu', '', $cleaned) ?? $cleaned;
+        $cleaned = trim($cleaned);
+
+        $decoded = json_decode($cleaned, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $start = strpos($cleaned, '{');
+        $end = strrpos($cleaned, '}');
+
+        if ($start === false || $end === false || $end <= $start) {
+            return [];
+        }
+
+        $decoded = json_decode(substr($cleaned, $start, $end - $start + 1), true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 }

@@ -181,16 +181,16 @@ class ProductRepository implements ProductRepositoryInterface
             // without losing VND precision after display-currency rounding.
             'price_vnd' => $this->normalizeDecimal($product->price),
             'stock' => $product->stock,
-            'category' => $this->translateForExport($product->category, $locale),
-            'brand' => $this->translateForExport($product->brand, $locale),
-            'tags' => $this->transformTagsForExport($product->tags, $locale),
+            'category' => $translatedFields['category'] ?? $this->translateForExport($product->category, $locale),
+            'brand' => $translatedFields['brand'] ?? $this->translateForExport($product->brand, $locale),
+            'tags' => $translatedFields['tags'] ?? $this->transformTagsForExport($product->tags, $locale),
             'featured' => $product->featured ? 1 : 0,
             'synced_to_meta' => $product->synced_to_meta ? 1 : 0,
-            'status' => $this->translateStatusForExport($product->status, $locale),
-            'product_form' => $this->translateForExport($product->product_form, $locale),
+            'status' => $translatedFields['status'] ?? $this->translateStatusForExport($product->status, $locale),
+            'product_form' => $translatedFields['product_form'] ?? $this->translateForExport($product->product_form, $locale),
             'published_at' => optional($product->published_at)->format('Y-m-d'),
             'seo_title' => $translatedFields['seo_title'] ?? $this->translateForExport($product->seo_title, $locale),
-            'seo_description' => $this->translateForExport($product->seo_description, $locale),
+            'seo_description' => $translatedFields['seo_description'] ?? $this->translateForExport($product->seo_description, $locale),
             'created_at' => optional($product->created_at)->toDateTimeString(),
             'updated_at' => optional($product->updated_at)->toDateTimeString(),
         ];
@@ -706,6 +706,28 @@ class ProductRepository implements ProductRepositoryInterface
         return array_values(array_unique($tags));
     }
 
+    private function stringifyTags(mixed $tags): ?string
+    {
+        if (is_string($tags)) {
+            $decoded = json_decode($tags, true);
+            $tags = is_array($decoded) ? $decoded : $this->parseTags($tags);
+        }
+
+        if (!is_array($tags) || $tags === []) {
+            return null;
+        }
+
+        $normalized = [];
+        foreach ($tags as $tag) {
+            $text = trim((string) $tag);
+            if ($text !== '') {
+                $normalized[] = $text;
+            }
+        }
+
+        return $normalized === [] ? null : implode('|', array_values(array_unique($normalized)));
+    }
+
     private function normalizeImageValue(mixed $value): ?string
     {
         $text = trim((string) $value);
@@ -764,16 +786,15 @@ class ProductRepository implements ProductRepositoryInterface
 
     private function transformTagsForExport(mixed $tags, string $locale): ?string
     {
-        if (is_string($tags)) {
-            $decoded = json_decode($tags, true);
-            $tags = is_array($decoded) ? $decoded : $this->parseTags($tags);
-        }
+        $tagText = $this->stringifyTags($tags);
 
-        if (!is_array($tags) || $tags === []) {
+        if ($tagText === null) {
             return null;
         }
 
-        return implode('|', array_map(fn ($tag) => $this->translateForExport($tag, $locale), $tags));
+        $tagParts = $this->parseTags($tagText);
+
+        return implode('|', array_map(fn ($tag) => $this->translateForExport($tag, $locale), $tagParts));
     }
 
     private function transformProductForWooCommerceExport(Product $product, string $locale, array $options = []): array
@@ -816,7 +837,7 @@ class ProductRepository implements ProductRepositoryInterface
             '',
             $price,
             $normalized['category'] ?? '',
-            $this->transformTagsForWooCommerceExport($product->tags, $locale),
+            $this->formatTagsForWooCommerceExport($normalized['tags'] ?? null),
             '',
             $this->transformImagesForWooCommerceExport($product->image),
             '',
@@ -867,7 +888,7 @@ class ProductRepository implements ProductRepositoryInterface
     private function buildWooCommerceDescription(Product $product, string $locale, array $normalized = []): string
     {
         $parts = array_filter([
-            $this->translateForExport($product->seo_description, $locale),
+            $normalized['seo_description'] ?? $this->translateForExport($product->seo_description, $locale),
             $normalized['name'] ?? $this->translateForExport($product->name, $locale),
         ]);
 
@@ -881,18 +902,15 @@ class ProductRepository implements ProductRepositoryInterface
             ?? '';
     }
 
-    private function transformTagsForWooCommerceExport(mixed $tags, string $locale): string
+    private function formatTagsForWooCommerceExport(?string $tags): string
     {
-        if (is_string($tags)) {
-            $decoded = json_decode($tags, true);
-            $tags = is_array($decoded) ? $decoded : $this->parseTags($tags);
-        }
+        $tagParts = $this->parseTags((string) $tags);
 
-        if (!is_array($tags) || $tags === []) {
+        if ($tagParts === []) {
             return '';
         }
 
-        return implode(', ', array_map(fn ($tag) => $this->translateForExport($tag, $locale), $tags));
+        return implode(', ', $tagParts);
     }
 
     private function transformImagesForWooCommerceExport(?string $image): string
@@ -961,30 +979,42 @@ class ProductRepository implements ProductRepositoryInterface
 
     private function resolveTranslatedExportFields(Product $product, string $locale): array
     {
-        if (!config('services.product_export.ai_translation', false)) {
+        if (!$this->shouldUseAiExportTranslation($locale)) {
             return [];
         }
 
-        if (!in_array($locale, ['vi', 'en'], true)) {
-            return [];
-        }
-
-        $sourceFields = [
+        $sourceFields = array_filter([
             'name' => $product->name,
+            'category' => $product->category,
+            'brand' => $product->brand,
+            'tags' => $this->stringifyTags($product->tags),
+            'status' => $product->status,
+            'product_form' => $product->product_form,
             'seo_title' => $product->seo_title,
-        ];
+            'seo_description' => $product->seo_description,
+        ], fn ($value) => trim((string) $value) !== '');
 
         $aiFields = $this->productExportTranslationService->translateFields($sourceFields, $locale);
         $translated = [];
 
         foreach ($sourceFields as $key => $value) {
             $candidate = trim((string) ($aiFields[$key] ?? $value));
-            $translated[$key] = $candidate !== ''
-                ? $this->translateForExport($candidate, $locale)
-                : $this->translateForExport($value, $locale);
+            $fallback = $this->translateForExport($value, $locale);
+            $translated[$key] = $candidate !== '' && $candidate !== trim((string) $value)
+                ? $candidate
+                : $fallback;
         }
 
         return $translated;
+    }
+
+    private function shouldUseAiExportTranslation(string $locale): bool
+    {
+        if ($locale !== 'en') {
+            return false;
+        }
+
+        return trim((string) config('services.gemini.api_key', '')) !== '';
     }
 
     private function translateStatusForExport(?string $status, string $locale): ?string

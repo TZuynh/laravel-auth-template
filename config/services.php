@@ -38,13 +38,19 @@ return [
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        'timeout' => (int) env('GEMINI_TIMEOUT', 8),
+        'connect_timeout' => (int) env('GEMINI_CONNECT_TIMEOUT', 3),
     ],
 
     'product_export' => [
-        // Default chosen to match the requested example: 110000 VND -> about 41.78 USD.
-        'usd_rate' => (float) env('PRODUCT_EXPORT_USD_RATE', 2632.84),
-        'run_inline' => (bool) env('PRODUCT_EXPORT_RUN_INLINE', true),
-        'ai_translation' => (bool) env('PRODUCT_EXPORT_AI_TRANSLATION', false),
+        // VND per 1 USD. Admins can override this from System settings.
+        'usd_rate' => (float) env('PRODUCT_EXPORT_USD_RATE', 26295.55),
+        'run_inline' => (bool) env('PRODUCT_EXPORT_RUN_INLINE', false),
+        'ai_translation' => (bool) env('PRODUCT_EXPORT_AI_TRANSLATION', true),
+        'chunk_rows' => (int) env('PRODUCT_EXPORT_CHUNK_ROWS', 20),
+        'chunk_seconds' => (int) env('PRODUCT_EXPORT_CHUNK_SECONDS', 45),
+        'fallback_chunk_rows' => (int) env('PRODUCT_EXPORT_FALLBACK_CHUNK_ROWS', 3),
+        'fallback_chunk_seconds' => (int) env('PRODUCT_EXPORT_FALLBACK_CHUNK_SECONDS', 8),
     ],
 
 ];

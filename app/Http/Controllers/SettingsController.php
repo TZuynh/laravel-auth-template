@@ -16,7 +16,7 @@ class SettingsController extends Controller
             'settingsValues' => [
                 'gemini_model' => (string) env('GEMINI_MODEL', config('services.gemini.model', 'gemini-2.5-flash')),
                 'gemini_api_key' => (string) env('GEMINI_API_KEY', config('services.gemini.api_key', '')),
-                'product_export_usd_rate' => (string) env('PRODUCT_EXPORT_USD_RATE', (string) config('services.product_export.usd_rate', '2632.84')),
+                'product_export_usd_rate' => (string) env('PRODUCT_EXPORT_USD_RATE', (string) config('services.product_export.usd_rate', '26295.55')),
             ],
             'exchangeRateInfo' => $currencyExchangeService->latestUsdToVnd(),
         ]);

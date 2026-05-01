@@ -13,6 +13,7 @@ use App\Services\ActivityNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -115,6 +116,8 @@ class ProductController extends Controller
         $payload = $this->buildExportPayload($request);
         $fileName = ($payload['export_format'] === 'woocommerce' ? 'woocommerce-products-' : 'products-') . now()->format('Y-m-d-His') . '.csv';
 
+        $this->cancelStaleActiveExports($request->user()->id);
+
         $productExport = ProductExport::query()->create([
             'user_id' => $request->user()->id,
             'status' => 'pending',
@@ -128,7 +131,7 @@ class ProductController extends Controller
         ]);
 
         try {
-            if (config('services.product_export.run_inline', true)) {
+            if ($this->shouldRunExportInline($payload)) {
                 GenerateProductExportJob::dispatchSync($productExport->id);
                 $productExport->refresh();
             } else {
@@ -173,9 +176,10 @@ class ProductController extends Controller
         ]);
     }
 
-    public function exportStatus(ProductExport $productExport): JsonResponse
+    public function exportStatus(ProductExport $productExport, ProductRepositoryInterface $productRepository): JsonResponse
     {
         $this->authorizeExport($productExport);
+        $this->processExportFallbackIfStale($productExport->fresh(), $productRepository);
 
         return response()->json($this->serializeExport($productExport->fresh()));
     }
@@ -249,6 +253,68 @@ class ProductController extends Controller
                 'show_currency_symbol' => $request->boolean('show_currency_symbol'),
             ],
         ];
+    }
+
+    private function shouldRunExportInline(array $payload): bool
+    {
+        $runInline = filter_var(config('services.product_export.run_inline', false), FILTER_VALIDATE_BOOLEAN);
+
+        if (!$runInline) {
+            return false;
+        }
+
+        $usesGeminiTranslation = ($payload['export_locale'] ?? null) === 'en'
+            && trim((string) config('services.gemini.api_key', '')) !== '';
+
+        return !$usesGeminiTranslation;
+    }
+
+    private function processExportFallbackIfStale(ProductExport $productExport, ProductRepositoryInterface $productRepository): void
+    {
+        if (!in_array($productExport->status, ['pending', 'processing'], true)) {
+            return;
+        }
+
+        $staleAfterSeconds = 2;
+        $lastTouchedAt = $productExport->status === 'pending'
+            ? $productExport->created_at
+            : $productExport->updated_at;
+
+        if ($lastTouchedAt && $lastTouchedAt->gt(now()->subSeconds($staleAfterSeconds))) {
+            return;
+        }
+
+        $lock = Cache::lock('product-export-fallback:' . $productExport->id, 15);
+
+        if (!$lock->get()) {
+            return;
+        }
+
+        try {
+            (new GenerateProductExportJob($productExport->id))->processChunk(
+                $productRepository,
+                (int) config('services.product_export.fallback_chunk_rows', 3),
+                (int) config('services.product_export.fallback_chunk_seconds', 8),
+                false,
+            );
+        } catch (Throwable) {
+            // The job marks the export as failed; status polling should still return JSON.
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function cancelStaleActiveExports(int $userId): void
+    {
+        ProductExport::query()
+            ->where('user_id', $userId)
+            ->whereIn('status', ['pending', 'processing', 'cancelling'])
+            ->where('updated_at', '<', now()->subMinutes(5))
+            ->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'updated_at' => now(),
+            ]);
     }
 
     private function authorizeExport(ProductExport $productExport): void
