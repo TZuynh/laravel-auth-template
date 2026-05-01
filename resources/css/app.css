@@ -1,3 +1,147 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== COMPONENTS ===== */
+@layer components {
+
+    /* ===== BUTTON ===== */
+    .btn-primary {
+        @apply px-5 py-2.5 rounded-xl text-sm font-semibold text-white
+               bg-gradient-to-r from-indigo-500 to-indigo-600
+               shadow-md shadow-indigo-500/20
+               transition-all duration-300;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(99,102,241,0.4);
+    }
+
+    .btn-outline {
+        @apply px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm
+               bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm
+               hover:bg-slate-100 dark:hover:bg-slate-800
+               transition-all duration-300;
+    }
+
+    /* ===== HERO ===== */
+    .dashboard-hero {
+        @apply p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800
+               bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm
+               shadow-sm;
+    }
+
+    /* ===== STAT CARD ===== */
+    .stat-card {
+        @apply p-4 rounded-2xl bg-slate-50 dark:bg-slate-800
+               transition-all duration-300;
+    }
+
+    .stat-card:hover {
+        @apply shadow-md;
+        transform: translateY(-4px);
+    }
+
+    .stat-label {
+        @apply text-xs text-slate-400 uppercase tracking-wider;
+    }
+
+    .stat-value {
+        @apply text-2xl font-bold text-slate-900 dark:text-white mt-1;
+    }
+
+    /* ===== MAIN CARD ===== */
+    .card {
+        @apply p-5 rounded-2xl border border-slate-200 dark:border-slate-800
+               bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm
+               shadow-sm transition-all duration-300;
+    }
+
+    .card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+    }
+
+    .card-label {
+        @apply text-xs text-slate-400 uppercase tracking-wider;
+    }
+
+    .card-value {
+        @apply text-3xl font-bold mt-2;
+    }
+
+    /* ===== CHART BUTTON ===== */
+    .chart-btn {
+        @apply px-3 py-1.5 text-xs font-semibold rounded-lg
+               transition-all duration-300;
+    }
+
+    .chart-btn:hover {
+        transform: translateY(-2px);
+    }
+
+    /* ===== EFFECTS ===== */
+    .hover-lift {
+        @apply transition-all duration-300 ease-out;
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-6px) scale(1.02);
+    }
+
+    .hover-glow:hover {
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25);
+    }
+
+    /* ===== GLASS EFFECT ===== */
+    .glass {
+        backdrop-filter: blur(14px);
+        background: rgba(255, 255, 255, 0.65);
+    }
+
+    .dark .glass {
+        background: rgba(15, 23, 42, 0.65);
+    }
+}
+
+/* ===== ANIMATIONS ===== */
+@layer utilities {
+
+    .animate-fade-in-up {
+        animation: fadeInUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .animate-scale-in {
+        animation: scaleIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .animation-delay-100 { animation-delay: 0.1s; }
+    .animation-delay-200 { animation-delay: 0.2s; }
+    .animation-delay-300 { animation-delay: 0.3s; }
+    .animation-delay-400 { animation-delay: 0.4s; }
+}
+
+/* ===== KEYFRAMES ===== */
+
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(24px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes scaleIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

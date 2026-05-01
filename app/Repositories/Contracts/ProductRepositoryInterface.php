@@ -21,5 +21,13 @@ interface ProductRepositoryInterface
 
     public function exportQuery(?string $query, array $filters = []): Builder;
 
+    public function transformProductForDisplay(Product $product, string $locale, array $options = []): array;
+
+    public function transformProductForExport(Product $product, string $locale, array $options = []): array;
+
+    public function exportHeaders(string $format, string $locale, array $options = []): array;
+
+    public function exportRow(Product $product, string $format, string $locale, array $options = []): array;
+
     public function importCsv(UploadedFile $file): array;
 }

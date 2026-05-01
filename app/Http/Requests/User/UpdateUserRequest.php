@@ -9,6 +9,20 @@ use Illuminate\Validation\Rule;
 
 class UpdateUserRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $password = $this->input('password');
+        $confirmation = $this->input('password_confirmation');
+
+        if (is_string($password) && trim($password) === '') {
+            $this->merge(['password' => null]);
+        }
+
+        if (is_string($confirmation) && trim($confirmation) === '') {
+            $this->merge(['password_confirmation' => null]);
+        }
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -31,4 +45,3 @@ class UpdateUserRequest extends FormRequest
         ];
     }
 }
-

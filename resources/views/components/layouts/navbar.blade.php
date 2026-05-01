@@ -1,6 +1,8 @@
 @php($locale = app()->getLocale())
+@php($notifications = \Illuminate\Support\Facades\Auth::check() ? \App\Models\ActivityNotification::query()->latest()->limit(20)->get() : collect())
+@php($serializedNotifications = $notifications->map(fn ($notification) => $notification->toDisplayArray())->values()->all())
 
-<div class="h-20 px-8 flex justify-between items-center bg-white/40 backdrop-blur-xl border-b border-slate-200/50 dark:bg-slate-950/70 dark:border-slate-800/80">
+<div class="relative flex h-20 items-center justify-between border-b border-slate-200/50 bg-white/40 px-8 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/70">
     <div class="flex items-center gap-6">
         <h1 class="text-xl font-extrabold text-slate-800 tracking-tightest font-heading dark:text-slate-100">
             {{ $title }}<span class="text-indigo-500">.</span>
@@ -27,10 +29,34 @@
             </svg>
         </button>
 
-        <button class="relative p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all dark:hover:bg-slate-800">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-            <span class="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 border-2 border-white rounded-full"></span>
-        </button>
+        <div class="relative">
+            <button type="button" id="notification-toggle" class="relative rounded-xl p-2 text-slate-400 transition-all hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-slate-800" aria-haspopup="true" aria-expanded="false">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span id="notification-badge" class="absolute top-1 right-1 hidden h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-950"></span>
+            </button>
+
+            <div
+                id="notification-dropdown"
+                data-empty-text="{{ __('messages.notifications.empty') }}"
+                data-remove-url-template="{{ route('notifications.destroy', ['notification' => '__ID__']) }}"
+                data-clear-url="{{ route('notifications.clear') }}"
+                data-notifications='@json($serializedNotifications)'
+                class="hidden fixed right-4 top-20 z-50 w-[min(calc(100vw-2rem),380px)] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+            >
+                <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                    <div>
+                        <p class="text-sm font-black text-slate-900 dark:text-slate-100">{{ __('messages.notifications.title') }}</p>
+                        <p class="text-[11px] font-medium text-slate-400 dark:text-slate-500">{{ __('messages.notifications.subtitle') }}</p>
+                    </div>
+                    <button type="button" id="notification-clear-all" class="text-xs font-black text-rose-600 hover:text-rose-700 dark:text-rose-300">
+                        {{ __('messages.notifications.clear_all') }}
+                    </button>
+                </div>
+                <div id="notification-list" class="max-h-[420px] space-y-2 overflow-y-auto p-3"></div>
+            </div>
+        </div>
 
         <div class="h-8 w-[1px] bg-slate-200 dark:bg-slate-800"></div>
 

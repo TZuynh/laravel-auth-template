@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\ActivityNotificationController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,15 +36,42 @@ Route::middleware('locale')->group(function () {
             ->middleware('throttle:30,1')
             ->name('ai.chat');
 
+        Route::delete('/notifications/{notification}', [ActivityNotificationController::class, 'destroy'])
+            ->name('notifications.destroy');
+        Route::delete('/notifications', [ActivityNotificationController::class, 'clear'])
+            ->name('notifications.clear');
+
+        Route::get('/settings', [SettingsController::class, 'index'])
+            ->middleware('admin')
+            ->name('settings.index');
+        Route::post('/settings/cache-clear', [SettingsController::class, 'clearCache'])
+            ->middleware('admin')
+            ->name('settings.cache-clear');
+        Route::post('/settings/integrations', [SettingsController::class, 'updateIntegrations'])
+            ->middleware('admin')
+            ->name('settings.integrations.update');
+
         Route::get('users', [UserController::class, 'index'])->name('users.index');
         Route::resource('users', UserController::class)
             ->except(['index', 'show'])
             ->middleware('admin');
 
         Route::get('products', [ProductController::class, 'index'])->name('products.index');
-        Route::get('products/export', [ProductController::class, 'export'])
+        Route::post('products/export', [ProductController::class, 'export'])
             ->middleware('admin')
             ->name('products.export');
+        Route::get('products/export-preview', [ProductController::class, 'exportPreview'])
+            ->middleware('admin')
+            ->name('products.export-preview');
+        Route::get('products/export-status/{productExport}', [ProductController::class, 'exportStatus'])
+            ->middleware('admin')
+            ->name('products.export-status');
+        Route::post('products/export-cancel/{productExport}', [ProductController::class, 'cancelExport'])
+            ->middleware('admin')
+            ->name('products.export-cancel');
+        Route::get('products/export-download/{productExport}', [ProductController::class, 'downloadExport'])
+            ->middleware('admin')
+            ->name('products.export-download');
         Route::delete('products/clear', [ProductController::class, 'destroyAll'])
             ->middleware('admin')
             ->name('products.clear');

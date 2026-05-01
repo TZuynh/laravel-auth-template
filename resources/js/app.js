@@ -1,6 +1,7 @@
 import './bootstrap';
 import './ai-chat-widget';
 import './users-management';
+import './notifications';
 
 function initThemeToggle() {
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {

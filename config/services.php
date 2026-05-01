@@ -40,4 +40,11 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
+    'product_export' => [
+        // Default chosen to match the requested example: 110000 VND -> about 41.78 USD.
+        'usd_rate' => (float) env('PRODUCT_EXPORT_USD_RATE', 2632.84),
+        'run_inline' => (bool) env('PRODUCT_EXPORT_RUN_INLINE', true),
+        'ai_translation' => (bool) env('PRODUCT_EXPORT_AI_TRANSLATION', false),
+    ],
+
 ];

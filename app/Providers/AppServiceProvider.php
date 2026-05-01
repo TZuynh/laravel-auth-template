@@ -10,6 +10,7 @@ use App\Repositories\Eloquent\AuthRepository;
 use App\Repositories\Eloquent\ProductRepository;
 use App\Repositories\Eloquent\ProfileRepository;
 use App\Repositories\Eloquent\UserRepository;
+use App\Services\ActivityNotificationService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AuthRepositoryInterface::class, AuthRepository::class);
         $this->app->bind(ProfileRepositoryInterface::class, ProfileRepository::class);
         $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
+        $this->app->singleton(ActivityNotificationService::class);
     }
 
     /**
