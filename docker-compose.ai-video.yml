@@ -1,0 +1,27 @@
+services:
+  ai-worker:
+    build:
+      context: ./ai-service
+    container_name: ai-video-worker
+    environment:
+      AI_WORKER_API_KEY: ${AI_WORKER_API_KEY:-local-worker-key}
+      AI_WORKER_OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AI_WORKER_COMFYUI_BASE_URL: ${COMFYUI_BASE_URL:-http://host.docker.internal:8188}
+      AI_WORKER_FFMPEG_BINARY: ffmpeg
+      AI_WORKER_FFPROBE_BINARY: ffprobe
+    ports:
+      - "${AI_WORKER_PORT:-8088}:8088"
+    volumes:
+      - ai_worker_storage:/srv/ai-service/storage
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-video-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    restart: unless-stopped
+
+volumes:
+  ai_worker_storage:
+

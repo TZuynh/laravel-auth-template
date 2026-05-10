@@ -14,9 +14,19 @@ class UserController extends Controller
     public function index(Request $request, UserRepositoryInterface $userRepository)
     {
         $q = trim((string) $request->query('q', ''));
-        $users = $userRepository->paginateBySearch($q, 10);
+        $role = trim((string) $request->query('role', 'all'));
+        $status = trim((string) $request->query('status', 'all'));
+        $users = $userRepository->paginateBySearch($q, 10, $role, $status);
+        $userStats = [
+            'total' => User::query()->count(),
+            'active' => User::query()->whereNotNull('email_verified_at')->count(),
+            'locked' => User::query()->whereNull('email_verified_at')->count(),
+            'admin' => User::query()->whereIn('role', ['administrator', 'admin'])->count(),
+            'staff' => User::query()->where('role', 'staff')->count(),
+            'customer' => User::query()->where('role', 'customer')->count(),
+        ];
 
-        return view('users.index', compact('users', 'q'));
+        return view('users.index', compact('users', 'q', 'role', 'status', 'userStats'));
     }
 
     public function create()

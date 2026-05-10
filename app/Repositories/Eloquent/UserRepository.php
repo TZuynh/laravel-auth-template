@@ -8,7 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class UserRepository implements UserRepositoryInterface
 {
-    public function paginateBySearch(?string $query, int $perPage = 10): LengthAwarePaginator
+    public function paginateBySearch(?string $query, int $perPage = 10, ?string $role = null, ?string $status = null): LengthAwarePaginator
     {
         $search = trim((string) $query);
 
@@ -36,6 +36,22 @@ class UserRepository implements UserRepositoryInterface
                     $subQuery->orWhere('role', $roleFilter);
                 }
             });
+        }
+
+        $role = strtolower(trim((string) $role));
+        if ($role !== '' && $role !== 'all') {
+            if ($role === 'admin') {
+                $builder->whereIn('role', ['administrator', 'admin']);
+            } else {
+                $builder->where('role', $role);
+            }
+        }
+
+        $status = strtolower(trim((string) $status));
+        if ($status === 'active') {
+            $builder->whereNotNull('email_verified_at');
+        } elseif ($status === 'locked') {
+            $builder->whereNull('email_verified_at');
         }
 
         return $builder

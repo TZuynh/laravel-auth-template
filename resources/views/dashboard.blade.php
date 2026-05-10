@@ -1,366 +1,165 @@
-<x-layouts.app :title="__('Monthly Sales')">
-    
-    {{-- 1. CSS CUSTOM & ÉP NỀN TỐI --}}
-    <style>
-        /* Ép nền của phần main/body trong layout của bạn thành màu tối để đồng bộ */
-        body, main, .bg-gray-50, .bg-gray-100, .bg-white {
-            background-color: #1f1d2b !important;
-        }
-        
-        /* Đảm bảo container không bị giới hạn padding hẹp của layout cũ */
-        .dash-container {
-            background-color: #1f1d2b;
-            min-height: 100vh;
-            padding: 1.5rem;
-            color: #ffffff;
-        }
+<x-layouts.app :title="__('messages.dashboard.page_title')">
+    @include('erp.partials.styles')
 
-        .dash-card {
-            background-color: #252836;
-            border: 1px solid #373a4b;
-            border-radius: 16px;
-            padding: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s ease;
-        }
-        
-        .dash-card:hover {
-            transform: translateY(-2px);
-        }
+    @php
+        $stats = collect($dashboardStats ?? []);
+        $displayLocale = $displayLocale ?? app()->getLocale();
+        $totalProducts = (int) $stats->get('total_products', 0);
+        $totalUsers = (int) $stats->get('total_users', 0);
+        $inventoryValue = (float) $stats->get('inventory_value', 0);
+        $totalStock = (int) $stats->get('total_stock', 0);
+        $today = now()->format('d/m/Y');
+        $formatMoney = function (float|int $value) use ($displayLocale): string {
+            if ($displayLocale === 'en') {
+                $usdRate = (float) config('services.product_export.usd_rate', 25000);
+                $usdRate = $usdRate > 0 ? $usdRate : 25000;
 
-        .text-muted { color: #808191; }
-        .text-light { color: #ffffff; }
-    </style>
+                return '$' . number_format($value / $usdRate, 2);
+            }
 
-    {{-- 2. NỘI DUNG GIAO DIỆN --}}
-    <div class="dash-container mx-auto w-full max-w-[1600px] space-y-6 pb-10">
-        
-        {{-- HEADER --}}
-        <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
-            <div class="flex items-center gap-4">
-                <h1 class="text-2xl font-bold text-white flex items-center gap-2">
-                    <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Monthly Sales
-                </h1>
+            return number_format($value, 0, ',', '.') . ' đ';
+        };
+        $cards = [
+            ['label' => __('messages.dashboard.month_revenue'), 'value' => $formatMoney($inventoryValue), 'delta' => '+12.5%', 'tone' => 'blue', 'icon' => 'M8 7h8M8 11h8M8 15h5'],
+            ['label' => __('messages.dashboard.gross_profit'), 'value' => $formatMoney($inventoryValue * 0.34), 'delta' => '+8.2%', 'tone' => 'green', 'icon' => 'M5 15l4-4 3 3 7-7'],
+            ['label' => __('messages.dashboard.accounts_receivable'), 'value' => $formatMoney(130000000), 'delta' => '-4.1%', 'tone' => 'amber', 'icon' => 'M12 3v18M17 7.5c-1.5-.8-3.6-1-5-.4-2 .8-2.1 3.2.1 3.9l1.8.6c2.5.8 2.3 3.9-.2 4.5-1.8.4-3.7 0-5.1-1'],
+            ['label' => __('messages.dashboard.new_orders'), 'value' => __('messages.dashboard.order_count', ['count' => 3]), 'delta' => '+15%', 'tone' => 'violet', 'icon' => 'M6 6h15l-2 8H8L6 6zM6 6 5 2H2M9 20h.01M18 20h.01'],
+            ['label' => __('messages.dashboard.deal_close_rate'), 'value' => '42%', 'delta' => '+5.4%', 'tone' => 'purple', 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+            ['label' => __('messages.dashboard.production_orders'), 'value' => __('messages.dashboard.production_order_count', ['count' => 2]), 'delta' => '+2.1%', 'tone' => 'cyan', 'icon' => 'm21 8-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8'],
+            ['label' => __('messages.dashboard.overdue_orders'), 'value' => __('messages.dashboard.order_count', ['count' => 1]), 'delta' => '-1.5%', 'tone' => 'rose', 'icon' => 'M12 8v5M12 17h.01M10.3 3.9 2.4-1.4 2.4 1.4 6.4 11.1c.9 1.6-.2 3.5-2.1 3.5H4.6c-1.9 0-3-2-2.1-3.5z'],
+            ['label' => __('messages.dashboard.absent_staff'), 'value' => __('messages.dashboard.people_count', ['count' => max(0, $totalUsers - 1)]), 'delta' => '+0%', 'tone' => 'slate', 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87'],
+        ];
+        $toneClasses = [
+            'blue' => ['bg' => 'bg-blue-600', 'soft' => 'bg-blue-100', 'text' => 'text-blue-600'],
+            'green' => ['bg' => 'bg-emerald-500', 'soft' => 'bg-emerald-100', 'text' => 'text-emerald-600'],
+            'amber' => ['bg' => 'bg-amber-500', 'soft' => 'bg-amber-100', 'text' => 'text-amber-600'],
+            'violet' => ['bg' => 'bg-indigo-500', 'soft' => 'bg-indigo-100', 'text' => 'text-indigo-600'],
+            'purple' => ['bg' => 'bg-purple-500', 'soft' => 'bg-purple-100', 'text' => 'text-purple-600'],
+            'cyan' => ['bg' => 'bg-cyan-500', 'soft' => 'bg-cyan-100', 'text' => 'text-cyan-600'],
+            'rose' => ['bg' => 'bg-rose-500', 'soft' => 'bg-rose-100', 'text' => 'text-rose-600'],
+            'slate' => ['bg' => 'bg-slate-700', 'soft' => 'bg-slate-100', 'text' => 'text-slate-600'],
+        ];
+    @endphp
+
+    <div class="space-y-8">
+        <section class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <h2 class="text-4xl font-black tracking-tight text-slate-900">{{ __('messages.dashboard.welcome_admin', ['name' => auth()->user()->name ?? 'Admin']) }}</h2>
+                <p class="mt-3 text-lg font-semibold text-slate-500">{{ __('messages.dashboard.database_description') }}</p>
             </div>
-            <div class="flex flex-wrap gap-2">
-                <button class="px-4 py-2 text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-500/30 transition">+ Add Block</button>
-                <button class="px-4 py-2 text-sm bg-[#252836] border border-[#373a4b] text-gray-300 hover:text-white rounded-xl transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                    Filter
-                </button>
-                <button class="px-4 py-2 text-sm bg-[#252836] border border-[#373a4b] text-gray-300 hover:text-white rounded-xl transition">Set Automation</button>
+            <div class="erp-card inline-flex items-center gap-3 px-5 py-3 text-base font-black text-slate-600">
+                <svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+                </svg>
+                {{ $today }}
             </div>
-        </header>
+        </section>
 
-        {{-- BỐ CỤC GRID CHÍNH (3 Cột) --}}
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {{-- CỘT TRÁI (KPIs, Closed Won, Customer Sat) --}}
-            <div class="col-span-1 lg:col-span-4 flex flex-col gap-6">
-                {{-- Row 1: 2 KPIs --}}
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="dash-card">
-                        <p class="text-sm text-muted mb-1 font-medium">New Deals Amount</p>
-                        <h2 class="text-2xl xl:text-3xl font-bold text-light mb-3 truncate">$9,125,100</h2>
-                        <div class="flex items-end justify-between">
-                            <div>
-                                <p class="text-[11px] text-muted mb-0.5">YoY growth</p>
-                                <p class="text-sm text-emerald-400 font-semibold flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
-                                    23%
-                                </p>
+        <section class="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            @foreach ($cards as $card)
+                @php($tone = $toneClasses[$card['tone']])
+                <article class="erp-card relative min-h-[168px] overflow-hidden p-7">
+                    <div class="absolute -right-7 -top-7 h-28 w-28 rounded-full {{ $tone['soft'] }}"></div>
+                    <div class="relative z-10 flex items-start justify-between gap-4">
+                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl {{ $tone['bg'] }} text-white">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="{{ $card['icon'] }}"/>
+                            </svg>
+                        </span>
+                        <span class="rounded-xl px-3 py-1 text-sm font-black {{ str_starts_with($card['delta'], '-') ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600' }}">{{ $card['delta'] }}</span>
+                    </div>
+                    <p class="mt-6 text-base font-black text-slate-400">{{ $card['label'] }}</p>
+                    <p class="mt-3 text-3xl font-black text-slate-900">{{ $card['value'] }}</p>
+                </article>
+            @endforeach
+        </section>
+
+        <section class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <article class="erp-card p-7">
+                <div class="flex items-center justify-between gap-4">
+                    <h3 class="text-2xl font-black text-slate-900">{{ __('messages.dashboard.cash_profit_analysis') }}</h3>
+                    <span class="rounded-xl bg-blue-50 px-3 py-1 text-sm font-black text-blue-600">{{ __('messages.dashboard.current_month') }}</span>
+                </div>
+                <div class="mt-8 grid h-80 grid-cols-6 items-end gap-5 border-b border-dashed border-slate-200 px-4">
+                    @foreach ([46, 72, 58, 90, 66, 82] as $bar)
+                        <div class="flex h-full flex-col justify-end gap-3">
+                            <div class="rounded-t-2xl bg-blue-600/85" style="height: {{ $bar }}%"></div>
+                            <div class="rounded-t-2xl bg-emerald-500/80" style="height: {{ max(18, $bar - 24) }}%"></div>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="mt-5 flex items-center gap-6 text-sm font-black text-slate-500">
+                    <span class="inline-flex items-center gap-2"><i class="h-3 w-3 rounded-full bg-blue-600"></i> {{ __('messages.dashboard.revenue') }}</span>
+                    <span class="inline-flex items-center gap-2"><i class="h-3 w-3 rounded-full bg-emerald-500"></i> {{ __('messages.dashboard.profit') }}</span>
+                </div>
+            </article>
+
+            <article class="erp-card p-7">
+                <h3 class="text-2xl font-black text-slate-900">{{ __('messages.dashboard.production_progress') }}</h3>
+                <div class="mt-8 space-y-5">
+                    @foreach ([
+                        [__('messages.dashboard.cutting_cnc'), 78],
+                        [__('messages.dashboard.edge_banding'), 64],
+                        [__('messages.dashboard.assembly'), 52],
+                        [__('messages.dashboard.qc_packaging'), 38],
+                    ] as [$label, $value])
+                        <div>
+                            <div class="flex items-center justify-between text-sm font-black text-slate-600">
+                                <span>{{ $label }}</span>
+                                <span>{{ $value }}%</span>
                             </div>
-                            <div class="w-16 h-8"><canvas id="miniChart1"></canvas></div>
-                        </div>
-                    </div>
-                    <div class="dash-card">
-                        <p class="text-sm text-muted mb-1 font-medium">Deals Won</p>
-                        <h2 class="text-2xl xl:text-3xl font-bold text-light mb-3 truncate">34,345</h2>
-                        <div class="flex items-end justify-between">
-                            <div>
-                                <p class="text-[11px] text-muted mb-0.5">YoY growth</p>
-                                <p class="text-sm text-rose-400 font-semibold flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                                    17%
-                                </p>
+                            <div class="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full bg-gradient-to-r from-blue-600 to-emerald-500" style="width: {{ $value }}%"></div>
                             </div>
-                            <div class="w-16 h-8"><canvas id="miniChart2"></canvas></div>
                         </div>
+                    @endforeach
+                </div>
+                <div class="mt-8 rounded-2xl bg-slate-950 p-5 text-white">
+                    <p class="text-sm font-black uppercase tracking-[0.18em] text-slate-400">{{ __('messages.dashboard.inventory_total') }}</p>
+                    <p class="mt-2 text-3xl font-black">{{ __('messages.dashboard.unit_count', ['count' => number_format($totalStock)]) }}</p>
+                    <p class="mt-2 text-sm font-semibold text-slate-400">{{ __('messages.dashboard.available_products', ['count' => number_format($totalProducts)]) }}</p>
+                </div>
+            </article>
+        </section>
+
+        <section class="grid gap-6 xl:grid-cols-3">
+            <article class="erp-card overflow-hidden">
+                <header class="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-6 py-5">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 12 2 2 4-5"/><circle cx="12" cy="12" r="10"/></svg>
+                        <h3 class="text-lg font-black text-slate-900">{{ __('messages.dashboard.pending_approvals') }}</h3>
+                    </div>
+                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">0</span>
+                </header>
+                <div class="grid min-h-40 place-items-center p-8 text-center">
+                    <div>
+                        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-4 border-slate-200 text-slate-300">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 12 2 2 4-5"/><circle cx="12" cy="12" r="10"/></svg>
+                        </div>
+                        <p class="mt-4 text-sm font-semibold text-slate-400">{{ __('messages.dashboard.no_pending_tasks') }}</p>
                     </div>
                 </div>
+            </article>
 
-                {{-- Closed Won Bar Chart --}}
-                <div class="dash-card flex-1 min-h-[300px] flex flex-col">
-                    <h3 class="text-base font-semibold text-light mb-4">Closed Won</h3>
-                    <div class="flex flex-wrap gap-4 text-xs mb-4">
-                        <span class="flex items-center gap-1.5 text-muted"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Deals Closed Won</span>
-                        <span class="flex items-center gap-1.5 text-muted"><span class="w-2.5 h-2.5 rounded-full bg-green-400"></span> Deals Created</span>
-                    </div>
-                    <div class="flex-1 relative w-full min-h-[200px]"><canvas id="closedWonChart"></canvas></div>
+            <article class="erp-card overflow-hidden border-rose-100">
+                <header class="flex items-center gap-2 border-b border-rose-100 bg-rose-50 px-6 py-5">
+                    <svg class="h-5 w-5 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01M10.3 3.9 2.5 17.5A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.5L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                    <h3 class="text-lg font-black text-rose-700">{{ __('messages.dashboard.operation_hotspots') }}</h3>
+                </header>
+                <div class="grid min-h-40 place-items-center p-8 text-center">
+                    <p class="text-sm font-semibold italic text-slate-400">{{ __('messages.dashboard.system_stable') }}</p>
                 </div>
+            </article>
 
-                {{-- Customer Satisfaction Gauge --}}
-                <div class="dash-card">
-                    <h3 class="text-base font-semibold text-light mb-2">Customer Satisfaction</h3>
-                    <div class="relative h-[160px] flex items-center justify-center">
-                        <canvas id="satisfactionGauge"></canvas>
-                        <div class="absolute text-center mt-12">
-                            <p class="text-xs text-muted font-medium tracking-wide">NPS</p>
-                            <p class="text-3xl font-bold text-white">48.6</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 text-sm">
-                        <table class="w-full text-left text-muted">
-                            <thead>
-                                <tr class="border-b border-[#373a4b]"><th class="py-2.5 font-medium">Category</th><th class="py-2.5 font-medium text-right">Proportion</th><th class="py-2.5 font-medium text-right">Count</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr class="border-b border-[#373a4b]/50"><td class="py-2.5 text-white">Detractors <span class="text-xs text-gray-500 ml-1">1-6</span></td><td class="py-2.5 text-right font-medium">10.5%</td><td class="py-2.5 text-right">11</td></tr>
-                                <tr class="border-b border-[#373a4b]/50"><td class="py-2.5 text-white">Passives <span class="text-xs text-gray-500 ml-1">7-8</span></td><td class="py-2.5 text-right font-medium">30.5%</td><td class="py-2.5 text-right">32</td></tr>
-                                <tr><td class="py-2.5 text-white">Promoters <span class="text-xs text-gray-500 ml-1">9-10</span></td><td class="py-2.5 text-right font-medium">59%</td><td class="py-2.5 text-right">62</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+            <article class="erp-card overflow-hidden border-amber-100">
+                <header class="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-6 py-5">
+                    <svg class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8M14 7h7v7"/></svg>
+                    <h3 class="text-lg font-black text-amber-700">{{ __('messages.dashboard.sales_leaderboard') }}</h3>
+                </header>
+                <div class="grid min-h-40 place-items-center p-8 text-center">
+                    <p class="text-sm font-semibold italic text-slate-400">{{ __('messages.dashboard.no_sales_data') }}</p>
                 </div>
-            </div>
-
-            {{-- CỘT GIỮA (Radar, Line Chart) --}}
-            <div class="col-span-1 lg:col-span-5 flex flex-col gap-6">
-                {{-- Sales Capability Radar --}}
-                <div class="dash-card flex-1 flex flex-col min-h-[400px]">
-                    <div class="w-full flex justify-between items-start mb-2">
-                        <h3 class="text-base font-semibold text-light">Sales Capability</h3>
-                    </div>
-                    <div class="flex flex-wrap gap-4 text-xs mb-4">
-                        <span class="flex items-center gap-1.5 text-muted"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Team A</span>
-                        <span class="flex items-center gap-1.5 text-muted"><span class="w-2.5 h-2.5 rounded-full bg-green-400"></span> Team B</span>
-                        <span class="flex items-center gap-1.5 text-muted"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Team C</span>
-                    </div>
-                    <div class="flex-1 w-full relative flex justify-center items-center">
-                        <div class="w-full max-w-[360px] aspect-square relative">
-                            <canvas id="capabilityRadar"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Deals Line Chart --}}
-                <div class="dash-card min-h-[350px] flex flex-col">
-                    <h3 class="text-base font-semibold text-light mb-4">Deals</h3>
-                    <div class="flex flex-wrap gap-4 text-xs mb-4">
-                        <span class="flex items-center gap-1.5 text-muted"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Transaction Amount</span>
-                        <span class="flex items-center gap-1.5 text-muted"><span class="w-2.5 h-2.5 rounded-full bg-green-400"></span> Revenue</span>
-                    </div>
-                    <div class="flex-1 relative w-full min-h-[250px]"><canvas id="dealsChart"></canvas></div>
-                </div>
-            </div>
-
-            {{-- CỘT PHẢI (New Customers, Engagement, Ranking) --}}
-            <div class="col-span-1 lg:col-span-3 flex flex-col gap-6">
-                {{-- New Customers Bar --}}
-                <div class="dash-card border-blue-500/20 bg-gradient-to-b from-[#252836] to-[#1f233b] relative overflow-hidden">
-                    <div class="relative z-10">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-base font-semibold text-light">New Customers</h3>
-                            <button class="bg-blue-500/10 px-3 py-1.5 text-[11px] font-medium rounded-lg text-blue-400 border border-blue-500/20 flex items-center gap-1.5 hover:bg-blue-500/20 transition">
-                                ✨ Smart Analysis
-                            </button>
-                        </div>
-                        <div class="h-[140px] relative w-full"><canvas id="newCustomersChart"></canvas></div>
-                    </div>
-                </div>
-
-                {{-- Account Engagement Donut --}}
-                <div class="dash-card">
-                    <h3 class="text-base font-semibold text-light mb-4">Account Engagement</h3>
-                    <div class="relative h-[220px] flex justify-center items-center">
-                        <canvas id="engagementDonut"></canvas>
-                        <div class="absolute text-center">
-                            <p class="text-3xl font-bold text-white">129</p>
-                            <p class="text-xs text-muted mt-1 uppercase tracking-wider">Total</p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Sales Ranking --}}
-                <div class="dash-card flex-1 flex flex-col">
-                    <h3 class="text-base font-semibold text-light mb-8">Sales Ranking</h3>
-                    
-                    <div class="flex justify-around items-end mb-8 mt-2 px-2">
-                        <div class="flex flex-col items-center">
-                            <div class="w-14 h-14 rounded-full bg-gray-700 border-2 border-slate-500 mb-3 relative">
-                                <img src="https://i.pravatar.cc/150?img=47" class="w-full h-full rounded-full object-cover" alt="User"/>
-                                <span class="absolute -bottom-2 -right-1 w-6 h-6 bg-slate-500 text-white text-xs rounded-full flex items-center justify-center font-bold border-2 border-[#252836]">2</span>
-                            </div>
-                            <p class="text-sm text-light">Amy</p>
-                            <p class="text-sm font-bold text-white mt-1">3,010</p>
-                        </div>
-                        <div class="flex flex-col items-center mb-4">
-                            <div class="w-20 h-20 rounded-full bg-yellow-500 border-[3px] border-yellow-400 mb-3 relative shadow-[0_0_20px_rgba(234,179,8,0.3)]">
-                                <img src="https://i.pravatar.cc/150?img=32" class="w-full h-full rounded-full object-cover" alt="User"/>
-                                <span class="absolute -bottom-2 -right-1 w-7 h-7 bg-yellow-500 text-white text-sm rounded-full flex items-center justify-center font-bold border-2 border-[#252836]">1</span>
-                            </div>
-                            <p class="text-sm text-light font-medium">Kate Bush</p>
-                            <p class="text-lg font-bold text-white mt-1">4,950</p>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <div class="w-14 h-14 rounded-full bg-amber-700 border-2 border-amber-600 mb-3 relative">
-                                <img src="https://i.pravatar.cc/150?img=11" class="w-full h-full rounded-full object-cover" alt="User"/>
-                                <span class="absolute -bottom-2 -right-1 w-6 h-6 bg-amber-600 text-white text-xs rounded-full flex items-center justify-center font-bold border-2 border-[#252836]">3</span>
-                            </div>
-                            <p class="text-sm text-light">Yuge Bai</p>
-                            <p class="text-sm font-bold text-white mt-1">2,800</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-auto bg-[#1f1d2b] p-4 rounded-xl border border-[#373a4b] flex justify-between items-center hover:bg-[#2a2d3e] transition cursor-pointer">
-                        <div class="flex items-center gap-4">
-                            <span class="text-sm text-muted font-bold w-4 text-center">4</span>
-                            <img src="https://i.pravatar.cc/150?img=68" class="w-10 h-10 rounded-full object-cover border border-[#373a4b]" alt="User"/>
-                            <span class="text-sm font-medium text-light">Andy Bonillo</span>
-                        </div>
-                        <span class="text-sm font-bold text-white">2,610</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+            </article>
+        </section>
     </div>
-
-    {{-- 3. JAVASCRIPT & CHART.JS (Nạp trực tiếp vào file này) --}}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Cấu hình tổng thể Chart.js
-            Chart.defaults.color = '#808191';
-            Chart.defaults.font.family = "'Inter', 'Segoe UI', sans-serif";
-            const gridColor = '#373a4b';
-
-            // Chart 1: Mini Line (New Deals)
-            new Chart(document.getElementById('miniChart1'), {
-                type: 'line',
-                data: { labels: ['1','2','3','4','5','6'], datasets: [{ data: [10, 25, 20, 45, 30, 50], borderColor: '#6366f1', borderWidth: 2, tension: 0.4, pointRadius: 0 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } }
-            });
-
-            // Chart 2: Mini Line (Deals Won)
-            new Chart(document.getElementById('miniChart2'), {
-                type: 'line',
-                data: { labels: ['1','2','3','4','5','6'], datasets: [{ data: [50, 40, 45, 20, 30, 10], borderColor: '#808191', borderWidth: 2, tension: 0.4, pointRadius: 0 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } }
-            });
-
-            // Chart 3: Closed Won (Bar)
-            new Chart(document.getElementById('closedWonChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
-                    datasets: [
-                        { label: 'Deals Closed Won', data: [650, 400, 420, 480, 410, 430, 800, 400, 420], backgroundColor: '#3b82f6', borderRadius: 4, barPercentage: 0.5, categoryPercentage: 0.8 },
-                        { label: 'Deals Created', data: [250, 550, 600, 580, 500, 620, 500, 600, 580], backgroundColor: '#4ade80', borderRadius: 4, barPercentage: 0.5, categoryPercentage: 0.8 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, border: { display: false } },
-                        y: { grid: { color: gridColor, drawBorder: false }, border: { display: false }, ticks: { stepSize: 500, padding: 10 } }
-                    }
-                }
-            });
-
-            // Chart 4: Customer Satisfaction (Gauge)
-            new Chart(document.getElementById('satisfactionGauge'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Detractors', 'Passives', 'Promoters'],
-                    datasets: [{ data: [10, 30, 60], backgroundColor: ['#3b82f6', '#c084fc', '#4ade80'], borderWidth: 0, cutout: '82%' }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false, circumference: 180, rotation: 270,
-                    plugins: { legend: { display: false }, tooltip: { enabled: true } }
-                }
-            });
-
-            // Chart 5: Sales Capability (Radar)
-            new Chart(document.getElementById('capabilityRadar'), {
-                type: 'radar',
-                data: {
-                    labels: ['Risk Positioning', 'Resolve Object...', 'Expand Access', 'Account Planni...', 'Proactive Control', 'Target Prospect', 'Collaboration', 'Leverage Insig...'],
-                    datasets: [
-                        { label: 'Team A', data: [80, 60, 70, 80, 90, 70, 60, 50], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', borderWidth: 2, tension: 0.3 },
-                        { label: 'Team B', data: [60, 90, 60, 50, 40, 80, 90, 70], borderColor: '#4ade80', backgroundColor: 'rgba(74, 222, 128, 0.15)', borderWidth: 2, tension: 0.3 },
-                        { label: 'Team C', data: [40, 50, 90, 70, 60, 50, 70, 90], borderColor: '#c084fc', backgroundColor: 'rgba(192, 132, 252, 0.15)', borderWidth: 2, tension: 0.3 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        r: {
-                            angleLines: { color: gridColor }, 
-                            grid: { color: gridColor }, 
-                            pointLabels: { color: '#808191', font: { size: 11 }, padding: 15 }, 
-                            ticks: { display: false, max: 100, min: 0 }
-                        }
-                    }
-                }
-            });
-
-            // Chart 6: Deals (Multi-line Area)
-            const ctxDeals = document.getElementById('dealsChart').getContext('2d');
-            const gradientBlue = ctxDeals.createLinearGradient(0, 0, 0, 300);
-            gradientBlue.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); gradientBlue.addColorStop(1, 'rgba(59, 130, 246, 0)');
-            const gradientGreen = ctxDeals.createLinearGradient(0, 0, 0, 300);
-            gradientGreen.addColorStop(0, 'rgba(74, 222, 128, 0.4)'); gradientGreen.addColorStop(1, 'rgba(74, 222, 128, 0)');
-
-            new Chart(ctxDeals, {
-                type: 'line',
-                data: {
-                    labels: ['02.20', '02.21', '02.22', '02.23', '02.24', '02.25', '02.26', '02.27', '02.28'],
-                    datasets: [
-                        { label: 'Transaction Amount', data: [12000, 10000, 21000, 11000, 14000, 10000, 20000, 13000, 16000], borderColor: '#3b82f6', backgroundColor: gradientBlue, borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 6 },
-                        { label: 'Revenue', data: [16000, 15000, 14000, 14000, 13000, 16000, 14000, 15000, 16000], borderColor: '#4ade80', backgroundColor: gradientGreen, borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 6 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        x: { grid: { display: false }, border: { display: false }, ticks: { padding: 10 } },
-                        y: { grid: { color: gridColor, drawBorder: false }, border: { display: false }, ticks: { stepSize: 5000, padding: 10 } }
-                    }
-                }
-            });
-
-            // Chart 7: New Customers (Bar)
-            new Chart(document.getElementById('newCustomersChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
-                    datasets: [{ data: [30, 60, 45, 75, 40, 80, 45, 65, 40, 50], backgroundColor: '#38bdf8', borderRadius: 4, barPercentage: 0.6 }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    scales: { 
-                        x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 } } }, 
-                        y: { display: false } 
-                    }
-                }
-            });
-
-            // Chart 8: Account Engagement (Donut)
-            new Chart(document.getElementById('engagementDonut'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Team A', 'Team B', 'Team C', 'Team D'],
-                    datasets: [{ data: [40, 25, 20, 15], backgroundColor: ['#3b82f6', '#c084fc', '#f59e0b', '#4ade80'], borderWidth: 0, cutout: '78%' }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-        });
-    </script>
-
 </x-layouts.app>

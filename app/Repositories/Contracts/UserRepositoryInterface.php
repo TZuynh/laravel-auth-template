@@ -7,7 +7,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface UserRepositoryInterface
 {
-    public function paginateBySearch(?string $query, int $perPage = 10): LengthAwarePaginator;
+    public function paginateBySearch(?string $query, int $perPage = 10, ?string $role = null, ?string $status = null): LengthAwarePaginator;
 
     public function create(array $data): User;
 
@@ -15,4 +15,3 @@ interface UserRepositoryInterface
 
     public function delete(User $user): bool|null;
 }
-

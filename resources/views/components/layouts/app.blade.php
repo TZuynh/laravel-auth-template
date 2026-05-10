@@ -1,4 +1,5 @@
 @props(['title' => 'Dashboard'])
+@php($appName = (string) env('SITE_NAME', 'Owl Agency'))
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" class="h-full">
 <head>
@@ -6,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-locale" content="{{ app()->getLocale() }}">
-    <title>{{ $title }} | Nexus Pro</title>
+    <title>{{ $title }} | {{ $appName }}</title>
     <script>
         (function () {
             try {
@@ -16,24 +17,21 @@
             } catch (error) {}
         })();
     </script>
-    {{-- Đảm bảo bạn đã cài đặt Tailwind và chạy npm run dev --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full mesh-gradient antialiased overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-    <div class="flex h-screen w-full">
-        <aside class="z-50 border-r border-slate-200/50 bg-white/40 backdrop-blur-md flex-shrink-0 dark:border-slate-800/80 dark:bg-slate-950/80">
-            {{-- Laravel tìm file tại: resources/views/components/layouts/sidebar.blade.php --}}
+<body class="h-full overflow-hidden bg-slate-100 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+    <div id="app-shell" class="flex h-screen w-full">
+        <aside id="app-sidebar" class="z-50 shrink-0">
             <x-layouts.sidebar />
         </aside>
 
-        <div class="flex-1 flex flex-col min-w-0 relative">
-            <header class="sticky top-0 z-40 bg-white/60 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800 dark:bg-slate-950/70">
-                {{-- Laravel tìm file tại: resources/views/components/layouts/navbar.blade.php --}}
+        <div class="relative flex min-w-0 flex-1 flex-col">
+            <header class="sticky top-0 z-40">
                 <x-layouts.navbar :title="$title" />
             </header>
 
-            <main class="flex-1 overflow-y-auto p-6 md:p-10 dark:bg-slate-950">
-                <div class="max-w-[1500px] mx-auto">
+            <main class="app-main-content flex-1 overflow-y-auto bg-[#f6f8fb] p-4 md:p-6 dark:bg-slate-950">
+                <div class="mx-auto w-full max-w-[1540px]">
                     <x-flash-banner />
                     {{ $slot }}
                 </div>

@@ -1,109 +1,158 @@
 <x-layouts.app :title="__('messages.users.page_title')">
-    @php($isAdmin = in_array(strtolower(trim((string) (auth()->user()->role ?? ''))), ['administrator', 'admin'], true))
+    @include('erp.partials.styles')
 
-    <div class="space-y-8">
-        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    @php
+        $isAdmin = in_array(strtolower(trim((string) (auth()->user()->role ?? ''))), ['administrator', 'admin'], true);
+        $stats = [
+            ['label' => __('messages.users.total_users'), 'value' => $userStats['total'] ?? 0, 'tone' => 'blue', 'icon' => 'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM21 8v6M18 11h6'],
+            ['label' => __('messages.users.active'), 'value' => $userStats['active'] ?? 0, 'tone' => 'emerald', 'icon' => 'm5 13 4 4L19 7'],
+            ['label' => __('messages.users.locked'), 'value' => $userStats['locked'] ?? 0, 'tone' => 'red', 'icon' => 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12v10H6z'],
+            ['label' => __('messages.users.role_administrator'), 'value' => $userStats['admin'] ?? 0, 'tone' => 'purple', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'],
+            ['label' => __('messages.users.role_staff'), 'value' => $userStats['staff'] ?? 0, 'tone' => 'orange', 'icon' => 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M16 11h6'],
+            ['label' => __('messages.users.role_customer'), 'value' => $userStats['customer'] ?? 0, 'tone' => 'slate', 'icon' => 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+        ];
+        $toneClasses = [
+            'blue' => 'from-blue-500 to-blue-700',
+            'emerald' => 'from-emerald-500 to-green-700',
+            'red' => 'from-red-500 to-rose-700',
+            'purple' => 'from-purple-500 to-violet-700',
+            'orange' => 'from-orange-500 to-orange-700',
+            'slate' => 'from-slate-500 to-slate-700',
+        ];
+        $roleLabels = [
+            'administrator' => __('messages.users.role_administrator'),
+            'admin' => __('messages.users.role_administrator'),
+            'manager' => __('messages.users.role_manager'),
+            'staff' => __('messages.users.role_staff'),
+            'customer' => __('messages.users.role_customer'),
+        ];
+    @endphp
+
+    <div class="space-y-7" data-users-page>
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+            @foreach ($stats as $stat)
+                <article class="min-h-32 rounded-2xl bg-gradient-to-br {{ $toneClasses[$stat['tone']] }} p-5 text-white shadow-lg shadow-slate-200/60">
+                    <svg class="h-7 w-7 opacity-90" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="{{ $stat['icon'] }}"/>
+                    </svg>
+                    <p class="mt-5 text-3xl font-black">{{ number_format((int) $stat['value']) }}</p>
+                    <p class="mt-1 text-sm font-semibold text-white/85">{{ $stat['label'] }}</p>
+                </article>
+            @endforeach
+        </section>
+
+        <section class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-                <h2 class="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-                    {{ __('messages.users.title') }}
-                </h2>
-                <p class="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                    {{ __('messages.users.description') }}
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
+                    </span>
+                    <h2 class="text-3xl font-black tracking-tight text-slate-900">{{ __('messages.users.management_title') }}</h2>
+                </div>
+                <p class="mt-2 text-sm font-semibold text-slate-500">
+                    {{ __('messages.users.showing_count', ['shown' => $users->count(), 'total' => $users->total()]) }}
                 </p>
             </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <form method="GET" action="{{ route('users.index') }}" class="relative w-full sm:w-80" data-auto-search>
-                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
-                    <input type="text" name="q" value="{{ $q ?? request('q') }}" placeholder="{{ __('messages.users.search_placeholder') }}" class="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-10 text-sm text-slate-900 shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500">
-
-                    @if(!empty($q ?? request('q')))
-                        <a href="{{ route('users.index') }}" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" title="{{ __('messages.products.reset') }}">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </a>
-                    @endif
-                </form>
-
+            <div class="flex flex-wrap gap-3">
+                <button type="button" class="erp-btn erp-btn-green" data-export-table="#users-table" data-filename="users.csv">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
+                    {{ __('messages.users.export_excel') }}
+                </button>
+                <button type="button" class="erp-btn erp-btn-dark" data-print-section="#users-table-card">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+                    {{ __('messages.users.print') }}
+                </button>
                 @if ($isAdmin)
-                    <a href="{{ route('users.create') }}" class="inline-flex h-12 items-center gap-2 rounded-2xl bg-indigo-600 px-5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
+                    <a href="{{ route('users.create') }}" class="erp-btn erp-btn-blue">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                         {{ __('messages.users.add') }}
                     </a>
                 @endif
             </div>
-        </div>
+        </section>
 
-        <div class="overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+        <form method="GET" action="{{ route('users.index') }}" class="erp-card grid gap-4 p-5 xl:grid-cols-[1fr_190px_210px]">
+            <div class="relative">
+                <svg class="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21 21-5-5M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/></svg>
+                <input class="erp-input" style="padding-left: 3.35rem;" name="q" value="{{ $q }}" placeholder="{{ __('messages.users.search_placeholder_full') }}">
+            </div>
+            <select class="erp-input" name="role" onchange="this.form.submit()">
+                <option value="all" @selected($role === 'all')>{{ __('messages.users.all_roles') }}</option>
+                <option value="admin" @selected($role === 'admin')>{{ __('messages.users.role_administrator') }}</option>
+                <option value="manager" @selected($role === 'manager')>{{ __('messages.users.role_manager') }}</option>
+                <option value="staff" @selected($role === 'staff')>{{ __('messages.users.role_staff') }}</option>
+                <option value="customer" @selected($role === 'customer')>{{ __('messages.users.role_customer') }}</option>
+            </select>
+            <select class="erp-input" name="status" onchange="this.form.submit()">
+                <option value="all" @selected($status === 'all')>{{ __('messages.users.all_statuses') }}</option>
+                <option value="active" @selected($status === 'active')>{{ __('messages.users.active') }}</option>
+                <option value="locked" @selected($status === 'locked')>{{ __('messages.users.locked') }}</option>
+            </select>
+        </form>
+
+        <section class="erp-card overflow-hidden" id="users-table-card">
             <div class="overflow-x-auto">
-                <table class="w-full border-collapse text-left">
+                <table class="erp-table min-w-[1100px]" id="users-table">
                     <thead>
-                        <tr class="bg-slate-50/70 dark:bg-slate-800/70">
-                            <th class="px-8 py-5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">{{ __('messages.users.table_user') }}</th>
-                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">{{ __('messages.users.email') }}</th>
-                            <th class="px-6 py-5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">{{ __('messages.users.role') }}</th>
-                            <th class="px-8 py-5 text-right text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">{{ __('messages.users.actions') }}</th>
+                        <tr>
+                            <th class="w-12"><input type="checkbox" class="h-4 w-4 rounded border-slate-300" data-users-select-all aria-label="{{ __('messages.users.select_all') }}"></th>
+                            <th>{{ __('messages.users.table_user') }}</th>
+                            <th>{{ __('messages.users.contact') }}</th>
+                            <th>{{ __('messages.users.role') }}</th>
+                            <th>{{ __('messages.users.joined_at') }}</th>
+                            <th>{{ __('messages.users.status') }}</th>
+                            <th class="erp-actions">{{ __('messages.users.actions') }}</th>
                         </tr>
                     </thead>
-
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        @forelse($users as $user)
-                            @php($role = strtolower(trim((string) ($user->role ?? 'staff'))))
-                            @php($avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&bg=6366f1&color=fff')
-
-                            <tr class="transition-colors hover:bg-indigo-50/30 dark:hover:bg-slate-800/60">
-                                <td class="px-8 py-5">
-                                    <div class="flex items-center gap-4">
-                                        <button type="button" class="relative group" data-user-trigger data-name="{{ $user->name }}" data-email="{{ $user->email }}" data-id="{{ $user->id }}" data-role="{{ $role }}" data-avatar="{{ $avatarUrl }}">
-                                            <img class="h-11 w-11 rounded-2xl border-2 border-white object-cover shadow-md transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3 dark:border-slate-900" src="{{ $avatarUrl }}" alt="Avatar">
-                                            <span class="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900"></span>
-                                        </button>
-                                        <button type="button" class="text-left" data-user-trigger data-name="{{ $user->name }}" data-email="{{ $user->email }}" data-id="{{ $user->id }}" data-role="{{ $role }}" data-avatar="{{ $avatarUrl }}">
-                                            <p class="text-sm font-bold tracking-tight text-slate-900 transition-colors group-hover:text-indigo-600 dark:text-slate-100">{{ $user->name }}</p>
-                                            <p class="text-[11px] font-medium text-slate-400">{{ __('messages.users.profile_id') }}: #{{ $user->id }}</p>
-                                        </button>
+                    <tbody>
+                        @forelse ($users as $user)
+                            @php
+                                $normalizedRole = strtolower(trim((string) ($user->role ?? 'staff')));
+                                $isLocked = $user->email_verified_at === null;
+                            @endphp
+                            <tr>
+                                <td><input type="checkbox" class="h-4 w-4 rounded border-slate-300" data-users-select-row aria-label="{{ __('messages.users.select_row') }}"></td>
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="h-11 w-11 rounded-xl object-cover shadow-sm">
+                                        <div>
+                                            <p class="font-black text-slate-900">{{ $user->name }}</p>
+                                            <p class="mt-1 text-xs font-semibold text-slate-400">#{{ $user->id }}</p>
+                                        </div>
                                     </div>
                                 </td>
-
-                                <td class="px-6 py-5">
-                                    <span class="text-sm font-medium italic text-slate-600 dark:text-slate-300">{{ $user->email }}</span>
+                                <td>
+                                    <p class="font-semibold text-slate-700">{{ $user->email }}</p>
+                                    <p class="mt-1 text-xs font-semibold text-slate-400">{{ __('messages.users.no_phone') }}</p>
                                 </td>
-
-                                <td class="px-6 py-5">
-                                    <span class="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider {{ $role === 'administrator' || $role === 'admin' ? 'border-indigo-100 bg-indigo-50 text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300' : 'border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300' }}">
-                                        {{ $role === 'administrator' || $role === 'admin' ? __('messages.users.role_administrator') : __('messages.users.role_staff') }}
+                                <td>
+                                    <span class="rounded-xl bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-blue-600">
+                                        {{ $roleLabels[$normalizedRole] ?? ucfirst($normalizedRole) }}
                                     </span>
                                 </td>
-
-                                <td class="px-8 py-5 text-right">
-                                    <div class="flex items-center justify-end gap-2">
+                                <td>{{ optional($user->created_at)->format('d/m/Y') }}</td>
+                                <td>
+                                    <span class="rounded-xl px-3 py-1 text-xs font-black {{ $isLocked ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600' }}">
+                                        {{ $isLocked ? __('messages.users.locked') : __('messages.users.active') }}
+                                    </span>
+                                </td>
+                                <td class="erp-actions">
+                                    <div class="flex gap-2">
                                         @if ($isAdmin)
-                                            <a href="{{ route('users.edit', $user) }}" class="rounded-xl p-2 text-slate-400 transition-all hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-slate-800" title="{{ __('messages.users.edit') }}">
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.0001 2.0001 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </a>
-
-                                            <button type="button" data-users-delete="1" data-action="{{ route('users.destroy', $user) }}" data-user-name="{{ $user->name }}" class="rounded-xl p-2 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10" title="{{ __('messages.users.delete') }}">
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
+                                            <a href="{{ route('users.edit', $user) }}" class="rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-600">{{ __('messages.users.edit') }}</a>
+                                            <button type="button" data-users-delete data-action="{{ route('users.destroy', $user) }}" data-user-name="{{ $user->name }}" class="rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-600">{{ __('messages.users.delete') }}</button>
+                                        @else
+                                            <span class="text-xs font-semibold text-slate-400">-</span>
                                         @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                                    {{ __('messages.users.no_users') }}
+                                <td colspan="7" class="py-20 text-center">
+                                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-4 border-slate-200 text-slate-300">!</div>
+                                    <p class="mt-4 text-base font-semibold text-slate-400">{{ __('messages.users.no_users') }}</p>
                                 </td>
                             </tr>
                         @endforelse
@@ -111,65 +160,24 @@
                 </table>
             </div>
 
-            @if($users->hasPages())
-                <div class="border-t border-slate-100 bg-slate-50/50 px-8 py-6 dark:border-slate-800 dark:bg-slate-900/80">
+            @if ($users->hasPages())
+                <div class="border-t border-slate-100 px-5 py-4">
                     {{ $users->links() }}
                 </div>
             @endif
-        </div>
-    </div>
-
-    <div id="profile-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" id="profile-modal-overlay"></div>
-        <div class="relative w-full max-w-sm overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white p-8 text-center shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div class="flex flex-col items-center">
-                <div class="relative mb-4">
-                    <img id="p-avatar" src="" class="h-24 w-24 rounded-[2rem] border-4 border-white object-cover shadow-xl dark:border-slate-900">
-                    <span class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-white bg-emerald-500 dark:border-slate-900"></span>
-                </div>
-
-                <h3 id="p-name" class="text-2xl font-black leading-tight text-slate-900 dark:text-slate-100"></h3>
-                <p id="p-role-badge" class="mt-2 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest"></p>
-
-                <div class="mt-6 w-full space-y-3">
-                    <div class="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left dark:border-slate-800 dark:bg-slate-800/70">
-                        <div class="rounded-xl bg-white p-2 text-indigo-500 shadow-sm dark:bg-slate-900">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        <div class="overflow-hidden">
-                            <p class="text-[9px] font-black uppercase tracking-wider text-slate-400">{{ __('messages.users.email') }}</p>
-                            <p id="p-email" class="truncate text-sm font-bold text-slate-700 dark:text-slate-200"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="button" id="p-close" class="mt-6 w-full rounded-2xl bg-slate-900 py-4 text-sm font-bold text-white shadow-lg shadow-slate-200 transition-all active:scale-95 hover:bg-indigo-600 dark:bg-indigo-600 dark:shadow-none dark:hover:bg-indigo-500">
-                    {{ __('messages.users.close_profile') }}
-                </button>
-            </div>
-        </div>
+        </section>
     </div>
 
     @if ($isAdmin)
-        <div id="users-delete-modal" class="fixed inset-0 z-[70] hidden">
-            <div id="users-delete-overlay" class="absolute inset-0 bg-slate-900/30 backdrop-blur-sm"></div>
+        <div id="users-delete-modal" class="fixed inset-0 z-[120] hidden">
+            <div id="users-delete-overlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
             <div class="absolute inset-0 flex items-center justify-center p-4">
-                <div class="w-full max-w-sm overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-                    <div class="px-5 py-4">
-                        <p class="text-sm font-black text-slate-900 dark:text-slate-100">{{ __('messages.users.delete_title') }}</p>
-                        <p class="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                            {{ __('messages.users.delete_desc') }} <span id="users-delete-name" class="font-black text-slate-700 dark:text-slate-200"></span>
-                        </p>
-                    </div>
-                    <div class="flex items-center justify-end gap-2 px-5 pb-5">
-                        <button id="users-delete-cancel" type="button" class="rounded-2xl px-4 py-2 text-sm font-bold text-slate-600 transition-all hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                            {{ __('messages.users.cancel') }}
-                        </button>
-                        <button id="users-delete-confirm" type="button" class="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-rose-200 transition-all">
-                            {{ __('messages.users.delete_confirm') }}
-                        </button>
+                <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+                    <p class="text-base font-black text-slate-900">{{ __('messages.users.delete_title') }}</p>
+                    <p class="mt-2 text-sm font-semibold text-slate-500">{{ __('messages.users.delete_desc') }} <span id="users-delete-name" class="text-slate-900"></span></p>
+                    <div class="mt-5 flex justify-end gap-2">
+                        <button id="users-delete-cancel" type="button" class="erp-btn erp-btn-outline">{{ __('messages.users.cancel') }}</button>
+                        <button id="users-delete-confirm" type="button" class="erp-btn bg-rose-600 text-white">{{ __('messages.users.delete_confirm') }}</button>
                     </div>
                     <form id="users-delete-form" method="POST" class="hidden">@csrf @method('DELETE')</form>
                 </div>
@@ -179,52 +187,25 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const profileModal = document.getElementById('profile-modal');
-            const profileOverlay = document.getElementById('profile-modal-overlay');
-            const profileClose = document.getElementById('p-close');
-
-            document.querySelectorAll('[data-user-trigger]').forEach((trigger) => {
-                trigger.addEventListener('click', function () {
-                    const data = this.dataset;
-
-                    document.getElementById('p-name').textContent = data.name;
-                    document.getElementById('p-email').textContent = data.email;
-                    document.getElementById('p-avatar').src = data.avatar;
-
-                    const badge = document.getElementById('p-role-badge');
-                    const isAdminRole = data.role === 'administrator' || data.role === 'admin';
-                    badge.textContent = isAdminRole ? '{{ __('messages.users.role_administrator') }}' : '{{ __('messages.users.role_staff') }}';
-                    badge.className = isAdminRole
-                        ? 'mt-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300'
-                        : 'mt-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300';
-
-                    profileModal.classList.remove('hidden');
-                    profileModal.classList.add('flex');
-                });
-            });
-
-            const closeProfile = () => {
-                profileModal.classList.add('hidden');
-                profileModal.classList.remove('flex');
+            const root = document.querySelector('[data-users-page]');
+            const selectAll = root?.querySelector('[data-users-select-all]');
+            const rows = Array.from(root?.querySelectorAll('[data-users-select-row]') || []);
+            const syncSelectAll = () => {
+                if (!selectAll) return;
+                const checkedCount = rows.filter((checkbox) => checkbox.checked).length;
+                selectAll.checked = rows.length > 0 && checkedCount === rows.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < rows.length;
             };
 
-            profileClose?.addEventListener('click', closeProfile);
-            profileOverlay?.addEventListener('click', closeProfile);
-
-            const deleteModal = document.getElementById('users-delete-modal');
-            if (!deleteModal) return;
-
-            document.querySelectorAll('[data-users-delete]').forEach((button) => {
-                button.addEventListener('click', function () {
-                    document.getElementById('users-delete-name').textContent = this.dataset.userName;
-                    document.getElementById('users-delete-form').action = this.dataset.action;
-                    deleteModal.classList.remove('hidden');
+            selectAll?.addEventListener('change', () => {
+                rows.forEach((checkbox) => {
+                    checkbox.checked = selectAll.checked;
                 });
+                syncSelectAll();
             });
 
-            document.getElementById('users-delete-cancel')?.addEventListener('click', () => deleteModal.classList.add('hidden'));
-            document.getElementById('users-delete-overlay')?.addEventListener('click', () => deleteModal.classList.add('hidden'));
-            document.getElementById('users-delete-confirm')?.addEventListener('click', () => document.getElementById('users-delete-form').submit());
+            rows.forEach((checkbox) => checkbox.addEventListener('change', syncSelectAll));
+            syncSelectAll();
         });
     </script>
 </x-layouts.app>

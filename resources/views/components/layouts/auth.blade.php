@@ -1,11 +1,12 @@
 @props(['title' => 'Authentication'])
+@php($appName = (string) env('SITE_NAME', 'Owl Agency'))
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-locale" content="{{ app()->getLocale() }}">
-    <title>{{ $title }} | Nexus Pro</title>
+    <title>{{ $title }} | {{ $appName }}</title>
     <script>
         (function () {
             try {

@@ -263,11 +263,7 @@
                                 <td class="px-6 py-4 text-right whitespace-nowrap">
                                     @if ($isAdmin)
                                         <a href="{{ route('products.edit', $product) }}" class="mr-4 text-sm font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">{{ __('messages.products.edit') }}</a>
-                                        <form action="{{ route('products.destroy', $product) }}" method="POST" class="inline" onsubmit="return confirm('{{ __('messages.products.delete_single') }}');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="text-sm font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400">{{ __('messages.products.delete') }}</button>
-                                        </form>
+                                        <button type="button" class="text-sm font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400" data-product-delete data-action="{{ route('products.destroy', $product) }}" data-name="{{ $product->display_name ?? $product->name }}">{{ __('messages.products.delete') }}</button>
                                     @endif
                                 </td>
                             </tr>
@@ -348,6 +344,27 @@
             </div>
         </div>
 
+        <div id="product-delete-modal" class="fixed inset-0 z-[120] hidden">
+            <div id="product-delete-overlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                    <div class="px-6 py-5">
+                        <p class="text-sm font-black text-slate-900 dark:text-slate-100">{{ __('messages.products.delete_single') }}</p>
+                        <p id="product-delete-name" class="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400"></p>
+                    </div>
+                    <div class="flex items-center justify-end gap-3 px-6 pb-6">
+                        <button id="product-delete-cancel" type="button" class="rounded-2xl px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                            {{ __('messages.products.cancel') }}
+                        </button>
+                        <button id="product-delete-confirm" type="button" class="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-lg shadow-rose-200">
+                            {{ __('messages.products.delete') }}
+                        </button>
+                    </div>
+                    <form id="product-delete-form" method="POST" class="hidden">@csrf @method('DELETE')</form>
+                </div>
+            </div>
+        </div>
+
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const modal = document.getElementById('products-clear-modal');
@@ -372,6 +389,12 @@
                 const exportProgressBar = document.getElementById('products-export-progress-bar');
                 const exportProgressLabel = document.getElementById('products-export-progress-label');
                 const exportSubmit = document.getElementById('products-export-submit');
+                const productDeleteModal = document.getElementById('product-delete-modal');
+                const productDeleteOverlay = document.getElementById('product-delete-overlay');
+                const productDeleteCancel = document.getElementById('product-delete-cancel');
+                const productDeleteConfirm = document.getElementById('product-delete-confirm');
+                const productDeleteName = document.getElementById('product-delete-name');
+                const productDeleteForm = document.getElementById('product-delete-form');
                 let exportPollTimer = null;
                 let currentExport = null;
 
@@ -382,6 +405,18 @@
                 const open = () => modal.classList.remove('hidden');
                 const close = () => modal.classList.add('hidden');
                 const closePreview = () => previewModal?.classList.add('hidden');
+                const closeProductDelete = () => productDeleteModal?.classList.add('hidden');
+                document.querySelectorAll('[data-product-delete]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        if (!productDeleteModal || !productDeleteForm || !productDeleteName) return;
+                        productDeleteName.textContent = button.dataset.name || '';
+                        productDeleteForm.action = button.dataset.action || '';
+                        productDeleteModal.classList.remove('hidden');
+                    });
+                });
+                productDeleteOverlay?.addEventListener('click', closeProductDelete);
+                productDeleteCancel?.addEventListener('click', closeProductDelete);
+                productDeleteConfirm?.addEventListener('click', () => productDeleteForm?.submit());
                 const renderExportStatus = ({ message, meta = '', progress = 0, variant = 'info', downloadUrl = null, canCancel = false }) => {
                     if (!exportStatus || !exportStatusText || !exportStatusMeta || !exportDownload || !exportCancel || !exportProgressBar || !exportProgressLabel) {
                         return;

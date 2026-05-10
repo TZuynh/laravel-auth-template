@@ -1086,20 +1086,24 @@ class ProductRepository implements ProductRepositoryInterface
                 'tranh động vật' => 'animal wall art',
                 'tranh treo phòng khách' => 'living room wall art',
                 'tranh treo phòng ngủ' => 'bedroom wall art',
+                'tranh' => 'art',
                 'phòng khách' => 'living room',
                 'phòng ngủ' => 'bedroom',
                 'phòng em bé' => 'nursery',
                 'trẻ em' => 'kids',
                 'giáng sinh' => 'christmas',
+                'noel' => 'christmas',
                 'mùa đông' => 'winter',
                 'mùa thu' => 'autumn',
                 'mùa hè' => 'summer',
                 'mùa xuân' => 'spring',
                 'lễ hội' => 'holiday',
+                'phong cách' => 'style',
                 'trang trí' => 'decor',
                 'treo tường' => 'wall decor',
                 'cây thông' => 'pine tree',
                 'lá thông' => 'pine branch',
+                'vòng hoa' => 'wreath',
                 'người tuyết' => 'snowman',
                 'tuần lộc' => 'reindeer',
                 'xe trượt tuyết' => 'sleigh',
@@ -1107,6 +1111,23 @@ class ProductRepository implements ProductRepositoryInterface
                 'hoa tuyết' => 'snowflake',
                 'rừng thông' => 'pine forest',
                 'cảnh tuyết' => 'snowy landscape',
+                'chủ đề' => 'theme',
+                'tổng hợp' => 'general',
+                'cây cối' => 'plants',
+                'tông màu' => 'color palette',
+                'dành cho' => 'for',
+                'người yêu cây' => 'plant lovers',
+                'người yêu mèo' => 'cat lovers',
+                'mèo' => 'cat',
+                'quà cho' => 'gift for',
+                'quà' => 'gift',
+                'chân dung gia đình' => 'family portrait',
+                'biển hiệu tên' => 'name sign',
+                'gia đình' => 'family',
+                'tùy chỉnh' => 'custom',
+                'đồng quê (farmhouse)' => 'farmhouse',
+                'đồng quê' => 'farmhouse',
+                'mộc mạc' => 'rustic',
                 'khung gỗ' => 'wooden frame',
                 'trung tính' => 'neutral',
                 'in được' => 'printable',
@@ -1158,10 +1179,12 @@ class ProductRepository implements ProductRepositoryInterface
                 'summer' => 'mùa hè',
                 'spring' => 'mùa xuân',
                 'holiday' => 'lễ hội',
+                'style' => 'phong cách',
                 'decor' => 'trang trí',
                 'wall decor' => 'treo tường',
                 'pine tree' => 'cây thông',
                 'pine branch' => 'lá thông',
+                'wreath' => 'vòng hoa',
                 'snowman' => 'người tuyết',
                 'reindeer' => 'tuần lộc',
                 'sleigh' => 'xe trượt tuyết',
@@ -1169,6 +1192,21 @@ class ProductRepository implements ProductRepositoryInterface
                 'snowflake' => 'hoa tuyết',
                 'pine forest' => 'rừng thông',
                 'snowy landscape' => 'cảnh tuyết',
+                'theme' => 'chủ đề',
+                'general' => 'tổng hợp',
+                'plants' => 'cây cối',
+                'color palette' => 'tông màu',
+                'plant lovers' => 'người yêu cây',
+                'cat lovers' => 'người yêu mèo',
+                'cat' => 'mèo',
+                'gift for' => 'quà cho',
+                'gift' => 'quà',
+                'family portrait' => 'chân dung gia đình',
+                'name sign' => 'biển hiệu tên',
+                'family' => 'gia đình',
+                'custom' => 'tùy chỉnh',
+                'farmhouse' => 'đồng quê',
+                'rustic' => 'mộc mạc',
                 'wooden frame' => 'khung gỗ',
                 'neutral' => 'trung tính',
                 'printable' => 'in được',
@@ -1236,17 +1274,46 @@ class ProductRepository implements ProductRepositoryInterface
             return;
         }
 
-        $builder->where(function ($subQuery) use ($search) {
+        $terms = collect([
+            $search,
+            Str::ascii($search),
+            $this->translateForExport($search, 'en'),
+            $this->translateForExport($search, 'vi'),
+        ])
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $normalizedSearch = Str::lower(Str::ascii($search));
+        $statusFilter = match (true) {
+            str_contains($normalizedSearch, 'inactive') || str_contains($normalizedSearch, 'ngung hoat dong') => 'inactive',
+            str_contains($normalizedSearch, 'active') || str_contains($normalizedSearch, 'dang hoat dong') => 'active',
+            default => null,
+        };
+
+        $builder->where(function ($subQuery) use ($search, $terms, $statusFilter) {
             if (ctype_digit($search)) {
                 $subQuery->orWhere('id', (int) $search);
             }
 
-            $subQuery->orWhere('name', 'like', '%' . $search . '%')
-                ->orWhere('sku', 'like', '%' . $search . '%')
-                ->orWhere('category', 'like', '%' . $search . '%')
-                ->orWhere('brand', 'like', '%' . $search . '%')
-                ->orWhere('product_form', 'like', '%' . $search . '%')
-                ->orWhere('status', 'like', '%' . $search . '%');
+            foreach ($terms as $term) {
+                $like = '%' . $term . '%';
+
+                $subQuery->orWhere('name', 'like', $like)
+                    ->orWhere('sku', 'like', $like)
+                    ->orWhere('category', 'like', $like)
+                    ->orWhere('brand', 'like', $like)
+                    ->orWhere('product_form', 'like', $like)
+                    ->orWhere('status', 'like', $like)
+                    ->orWhere('tags', 'like', $like)
+                    ->orWhere('seo_title', 'like', $like)
+                    ->orWhere('seo_description', 'like', $like);
+            }
+
+            if ($statusFilter !== null) {
+                $subQuery->orWhere('status', $statusFilter);
+            }
         });
     }
 

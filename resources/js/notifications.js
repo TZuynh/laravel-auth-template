@@ -33,14 +33,15 @@ function createNotificationItem(notification, removeNotification) {
     const item = document.createElement('div');
     item.className = 'group rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950/70 dark:hover:bg-slate-900';
 
-    const colorClasses = notification.type === 'success'
-        ? 'bg-emerald-500 text-white'
-        : 'bg-rose-500 text-white';
+    const actorName = notification.actor_name || 'System';
+    const avatarUrl = notification.actor_avatar_url
+        || `https://ui-avatars.com/api/?name=${encodeURIComponent(actorName)}&bg=ec4899&color=fff`;
 
     item.innerHTML = `
         <div class="flex items-start gap-3">
-            <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${colorClasses}">
-                ${notification.type === 'success' ? '&#10003;' : '!'}
+            <span class="relative mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-sky-500 p-[2px] shadow-sm">
+                <img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(actorName)}" class="h-full w-full rounded-full object-cover bg-white dark:bg-slate-900">
+                <span class="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400 dark:border-slate-950"></span>
             </span>
             <div class="min-w-0 flex-1">
                 <p class="text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100">${escapeHtml(notification.message)}</p>

@@ -19,8 +19,12 @@ class ProfileRepository implements ProfileRepositoryInterface
         }
 
         if ($avatar !== null) {
-            if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
+            if ($user->avatar && ! str_starts_with($user->avatar, 'http://') && ! str_starts_with($user->avatar, 'https://')) {
+                $oldAvatar = str_starts_with($user->avatar, 'storage/')
+                    ? substr($user->avatar, strlen('storage/'))
+                    : $user->avatar;
+
+                Storage::disk('public')->delete($oldAvatar);
             }
 
             $user->avatar = $avatar->store('avatars', 'public');

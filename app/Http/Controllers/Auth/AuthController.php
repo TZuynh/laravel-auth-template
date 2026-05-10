@@ -90,19 +90,10 @@ class AuthController extends Controller
         $publishedProducts = Product::query()->whereNotNull('published_at')->count();
 
         $months = collect(range(5, 0))->map(fn (int $offset) => now()->startOfMonth()->subMonths($offset));
-        $months = $months->push(now()->startOfMonth());
+        $seriesStart = $months->first()->copy();
 
-        $productSeries = Product::query()
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as period, COUNT(*) as aggregate')
-            ->where('created_at', '>=', now()->startOfMonth()->subMonths(5))
-            ->groupBy('period')
-            ->pluck('aggregate', 'period');
-
-        $userSeries = User::query()
-            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as period, COUNT(*) as aggregate')
-            ->where('created_at', '>=', now()->startOfMonth()->subMonths(5))
-            ->groupBy('period')
-            ->pluck('aggregate', 'period');
+        $productSeries = $this->monthlyCreationSeries(Product::class, $seriesStart);
+        $userSeries = $this->monthlyCreationSeries(User::class, $seriesStart);
 
         $chartLabels = $months->map(fn (Carbon $month) => $month->translatedFormat('M Y'))->values();
         $productChartData = $months->map(fn (Carbon $month) => (int) ($productSeries[$month->format('Y-m')] ?? 0))->values();
@@ -118,7 +109,7 @@ class AuthController extends Controller
             ->get();
 
         $latestProducts = Product::query()
-            ->select(['id', 'name', 'price', 'stock', 'status', 'created_at'])
+            ->select(['id', 'name', 'image', 'price', 'stock', 'category', 'status', 'created_at'])
             ->latest()
             ->limit(4)
             ->get();
@@ -167,5 +158,22 @@ class AuthController extends Controller
         }
 
         return number_format($value, 2) . ' VND';
+    }
+
+    private function monthlyCreationSeries(string $modelClass, Carbon $startDate)
+    {
+        $driver = DB::connection()->getDriverName();
+        $periodExpression = match ($driver) {
+            'sqlite' => 'strftime("%Y-%m", created_at)',
+            'pgsql' => "to_char(created_at, 'YYYY-MM')",
+            'sqlsrv' => "FORMAT(created_at, 'yyyy-MM')",
+            default => 'DATE_FORMAT(created_at, "%Y-%m")',
+        };
+
+        return $modelClass::query()
+            ->selectRaw($periodExpression . ' as period, COUNT(*) as aggregate')
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('period')
+            ->pluck('aggregate', 'period');
     }
 }

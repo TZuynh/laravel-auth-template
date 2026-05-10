@@ -145,3 +145,99 @@
         transform: scale(1);
     }
 }
+
+/* ===== ADMIN COMPACT MODE ===== */
+.app-main-content {
+    font-size: 14px;
+}
+
+.app-main-content .max-w-\[1540px\] {
+    max-width: 1380px !important;
+}
+
+.app-main-content .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.25rem !important;
+}
+
+.app-main-content .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem !important;
+}
+
+.app-main-content .gap-8 {
+    gap: 1.25rem !important;
+}
+
+.app-main-content .gap-6 {
+    gap: 1rem !important;
+}
+
+.app-main-content .p-10,
+.app-main-content .p-8,
+.app-main-content .p-7,
+.app-main-content .p-6 {
+    padding: 1.25rem !important;
+}
+
+.app-main-content .px-8 {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+}
+
+.app-main-content .py-6,
+.app-main-content .py-5 {
+    padding-top: 0.9rem !important;
+    padding-bottom: 0.9rem !important;
+}
+
+.app-main-content .text-4xl {
+    font-size: 1.875rem !important;
+    line-height: 2.25rem !important;
+}
+
+.app-main-content .text-3xl {
+    font-size: 1.55rem !important;
+    line-height: 2rem !important;
+}
+
+.app-main-content .text-2xl {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+}
+
+.app-main-content .text-xl {
+    font-size: 1.05rem !important;
+    line-height: 1.5rem !important;
+}
+
+.app-main-content .text-lg {
+    font-size: 0.98rem !important;
+    line-height: 1.45rem !important;
+}
+
+.app-main-content .rounded-\[2\.5rem\],
+.app-main-content .rounded-\[2rem\],
+.app-main-content .rounded-3xl {
+    border-radius: 1.25rem !important;
+}
+
+.app-main-content .rounded-2xl {
+    border-radius: 0.95rem !important;
+}
+
+.app-main-content .h-16,
+.app-main-content .w-16 {
+    height: 3rem !important;
+    width: 3rem !important;
+}
+
+.app-main-content .h-14,
+.app-main-content .w-14 {
+    height: 2.75rem !important;
+    width: 2.75rem !important;
+}
+
+.app-main-content table th,
+.app-main-content table td {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+}
