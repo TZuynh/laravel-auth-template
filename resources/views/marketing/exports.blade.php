@@ -26,7 +26,7 @@
                             @else
                                 <button type="button" disabled class="rounded-2xl bg-white/5 px-4 py-2 text-xs font-black text-slate-500">Tải MP4</button>
                             @endif
-                            <form method="POST" action="{{ route('marketing.exports.destroy', $export['id']) }}" onsubmit="return confirm('Xóa file MP4 export này?')">
+                            <form method="POST" action="{{ route('marketing.exports.destroy', $export['id']) }}" data-confirm="Xóa file MP4 export này?">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="rounded-2xl bg-rose-500/15 px-4 py-2 text-xs font-black text-rose-100 transition hover:bg-rose-500 hover:text-white">

@@ -10,10 +10,15 @@ class Settings(BaseSettings):
     storage_root: Path = Path("storage")
     ffmpeg_binary: str = "ffmpeg"
     ffprobe_binary: str = "ffprobe"
+    whisper_binary: str = "whisper"
+    whisper_model: str = "small"
 
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
-    openai_model: str = "gpt-4.1-mini"
+    openai_model: str = "gpt-5.5"
+    kling_api_key: str | None = None
+    wan_api_key: str | None = None
+    ltx_api_key: str | None = None
 
     comfyui_base_url: str = "http://127.0.0.1:8188"
     fal_api_key: str | None = None
@@ -37,4 +42,3 @@ class Settings(BaseSettings):
 @lru_cache
 def settings() -> Settings:
     return Settings()
-

@@ -12,6 +12,11 @@ final readonly class TimelineManifestData
         public int $fps,
         public array $scenes,
         public ?string $musicUrl = null,
+        public ?string $voiceUrl = null,
+        public ?string $title = null,
+        public ?string $style = null,
+        public ?string $music = null,
+        public ?string $subtitleStyle = null,
     ) {
     }
 
@@ -25,7 +30,11 @@ final readonly class TimelineManifestData
             'fps' => $this->fps,
             'scenes' => $this->scenes,
             'music_url' => $this->musicUrl,
+            'voice_url' => $this->voiceUrl,
+            'title' => $this->title,
+            'style' => $this->style,
+            'music' => $this->music,
+            'subtitle_style' => $this->subtitleStyle,
         ];
     }
 }
-

@@ -10,6 +10,17 @@ return [
         'crf' => (int) env('AI_VIDEO_FFMPEG_CRF', 20),
     ],
 
+    'remotion' => [
+        'entry' => env('AI_VIDEO_REMOTION_ENTRY', base_path('remotion/index.jsx')),
+        'composition' => env('AI_VIDEO_REMOTION_COMPOSITION', 'CinematicVideo'),
+        'timeout' => (int) env('AI_VIDEO_REMOTION_TIMEOUT', 1800),
+        'frame_timeout' => (int) env('AI_VIDEO_REMOTION_FRAME_TIMEOUT', 60000),
+        'concurrency' => env('AI_VIDEO_REMOTION_CONCURRENCY', '50%'),
+        'npx_binary' => env('NPX_BINARY', PHP_OS_FAMILY === 'Windows' ? 'npx.cmd' : 'npx'),
+        'browser_executable' => env('AI_VIDEO_REMOTION_BROWSER_EXECUTABLE'),
+        'allow_npx_download' => (bool) env('AI_VIDEO_REMOTION_ALLOW_NPX_DOWNLOAD', false),
+    ],
+
     'workspace' => [
         'root' => storage_path('app/ai-video'),
         'exports' => storage_path('app/public/ai-video/exports'),
@@ -21,7 +32,7 @@ return [
     ],
 
     'queue' => [
-        'name' => env('AI_VIDEO_RENDER_QUEUE', 'render'),
+        'name' => env('AI_VIDEO_RENDER_QUEUE', env('DB_QUEUE', 'default')),
         'mode' => env('AI_VIDEO_RENDER_MODE', env('APP_ENV') === 'local' ? 'sync' : 'queue'),
     ],
 

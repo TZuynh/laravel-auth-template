@@ -3,6 +3,7 @@
 namespace App\Services\Marketing;
 
 use App\Models\AiImageGeneration;
+use App\Models\BrainMemory;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\AI\AiProviderManager;
@@ -14,8 +15,10 @@ use Throwable;
 
 class AiImageGenerationService
 {
-    public function __construct(private readonly AiProviderManager $providers)
-    {
+    public function __construct(
+        private readonly AiProviderManager $providers,
+        private readonly CommercialImagePromptService $promptEngine,
+    ) {
     }
 
     public function generate(User $user, array $data): AiImageGeneration
@@ -24,24 +27,36 @@ class AiImageGenerationService
             ? Product::query()->find((int) $data['product_id'])
             : null;
 
+        $creativeBrief = trim((string) ($data['prompt'] ?? ''));
+        if ($creativeBrief === '' || (bool) ($data['random'] ?? false)) {
+            $creativeBrief = $this->randomCreativeBrief($product, $data);
+        }
+        $data['prompt'] = $creativeBrief;
+
         $aspectRatio = (string) ($data['aspect_ratio'] ?? '9:16');
         $format = $this->format($aspectRatio);
-        $prompt = $this->basePrompt($product, $data);
+        $brain = $this->brainContext($user, $creativeBrief);
+        $promptPackage = $this->promptEngine->build($product, $data, $brain);
+        $prompt = $promptPackage['prompt'];
+        $negativePrompt = $promptPackage['negative_prompt'];
         $generation = AiImageGeneration::create([
             'uuid' => (string) Str::uuid(),
             'user_id' => $user->id,
             'product_id' => $product?->id,
-            'provider' => (string) ($data['provider'] ?? 'openai'),
+            'provider' => (string) ($data['provider'] ?? 'pollinations'),
             'model' => $data['model'] ?? null,
             'style' => (string) ($data['style'] ?? 'cinematic'),
             'aspect_ratio' => $aspectRatio,
             'status' => 'running',
-            'prompt' => (string) ($data['prompt'] ?? ''),
+            'prompt' => $creativeBrief,
             'optimized_prompt' => $prompt,
-            'negative_prompt' => $this->negativePrompt(),
+            'negative_prompt' => $negativePrompt,
             'metadata' => [
                 'product_name' => $product?->name,
-                'audience' => $data['audience'] ?? 'social commerce',
+                'audience' => $data['audience'] ?? 'visual scene',
+                'brain_memory_count' => count($brain),
+                'random' => (bool) ($data['random'] ?? false),
+                'prompt_package' => $promptPackage,
             ],
         ]);
 
@@ -70,6 +85,8 @@ class AiImageGenerationService
                 'size' => $this->providerSize((string) ($data['model'] ?? ''), $aspectRatio),
                 'style' => $generation->style,
                 'aspect_ratio' => $aspectRatio,
+                'negative_prompt' => $negativePrompt,
+                'skip_prompt_optimization' => true,
             ], $data['provider'] ?? null);
 
             $stored = $this->storeProviderImage($generation, $response->data, $format);
@@ -123,27 +140,50 @@ class AiImageGenerationService
         $generation->delete();
     }
 
-    private function basePrompt(?Product $product, array $data): string
+    private function randomCreativeBrief(?Product $product, array $data): string
     {
-        $productName = $product?->name ?: 'premium ecommerce product';
-        $brief = $product?->seo_description ?: $product?->category ?: 'high-converting product visual';
-        $style = (string) ($data['style'] ?? 'cinematic');
-        $audience = (string) ($data['audience'] ?? 'TikTok shoppers');
-        $prompt = trim((string) ($data['prompt'] ?? ''));
+        $subject = $product?->name ?: 'hero product';
+        $briefs = [
+            "Luxury contemporary art gallery interior with {$subject} mounted on textured concrete wall, warm cinematic spotlight, reflective polished floor",
+            "Ultra realistic minimal studio scene with {$subject} on dark glass, cinematic rim light, architectural shadows, rich material texture",
+            "High-end interior photography scene with {$subject}, warm spotlight, soft volumetric lighting, dramatic contrast, natural depth of field",
+            "Quiet museum-grade environment with {$subject}, charcoal wall texture, polished floor reflections, refined spatial depth",
+            "Editorial physical scene with {$subject}, natural perspective, tactile surfaces, controlled shadows, premium realism",
+        ];
 
-        return trim(implode("\n", array_filter([
-            "Create a premium AI marketing image for: {$productName}.",
-            "Product context: {$brief}.",
-            "Audience: {$audience}.",
-            "Visual style: {$style}.",
-            $prompt !== '' ? "Creative direction: {$prompt}." : null,
-            'Cinematic ecommerce photography, realistic product lighting, premium reflections, depth of field, social-media ad composition, no flat vector art, no PowerPoint layout.',
-        ])));
+        return $briefs[array_rand($briefs)];
     }
 
-    private function negativePrompt(): string
+    private function brainContext(User $user, string $prompt): array
     {
-        return 'flat slideshow, low resolution, distorted text, messy layout, watermark, duplicate product, cartoon UI mockup';
+        return BrainMemory::query()
+            ->where('user_id', $user->id)
+            ->whereIn('category', ['brand_rule', 'usp', 'voice_style', 'customer_insight'])
+            ->latest('id')
+            ->limit(6)
+            ->get(['category', 'topic', 'content'])
+            ->map(fn (BrainMemory $memory): array => [
+                'category' => $memory->category,
+                'topic' => $memory->topic,
+                'content' => Str::limit($memory->content, 420),
+            ])
+            ->all();
+    }
+
+    private function styleDirection(string $style): string
+    {
+        return match ($style) {
+            'premium_packshot' => 'glossy physical surface, exact product silhouette, studio reflection, strong hero framing',
+            'luxury_editorial' => 'editorial interior photography, magazine-grade lighting, elegant props, refined contrast, expensive mood',
+            'clean_studio' => 'minimal clean studio, softbox lighting, crisp shadows, calm background, modern retail framing',
+            'lifestyle_ad' => 'realistic lifestyle scene, human context, natural environment, emotional spatial detail',
+            'social_viral' => 'bold physical scene, high contrast, dramatic color, dynamic crop, natural lens framing',
+            'canvas_campaign', 'award_campaign' => 'contemporary gallery scene, sculptural framing, refined color harmony, premium atmosphere',
+            'luxury' => 'luxury editorial interior photography, premium reflections, dark elegant lighting',
+            'minimalist' => 'minimal clean studio, restrained colors, precise product placement',
+            'cyberpunk' => 'neon social visual, cinematic glow, dramatic contrast',
+            default => 'cinematic product photography, premium light, depth of field, polished physical framing',
+        };
     }
 
     private function providerSize(string $model, string $aspectRatio): string
@@ -175,6 +215,11 @@ class AiImageGenerationService
 
         if (!empty($data['b64_json'])) {
             $binary = base64_decode((string) $data['b64_json'], true) ?: null;
+        }
+
+        if (!$binary && !empty($data['binary'])) {
+            $binary = (string) $data['binary'];
+            $mime = (string) ($data['mime'] ?? $mime);
         }
 
         if (!$binary && !empty($data['url'])) {
@@ -210,7 +255,6 @@ class AiImageGenerationService
         $this->paintBackground($image, $width, $height, (string) $generation->style);
         $this->paintLight($image, $width, $height);
         $this->paintProduct($image, $product, $width, $height);
-        $this->paintCopy($image, $generation, $product, $width, $height);
 
         $path = 'ai-images/' . $generation->uuid . '.png';
         $absolute = Storage::disk('public')->path($path);
@@ -229,9 +273,12 @@ class AiImageGenerationService
     private function paintBackground(\GdImage $image, int $width, int $height, string $style): void
     {
         $palette = match ($style) {
-            'luxury' => [[7, 10, 24], [88, 28, 135], [234, 179, 8]],
-            'cyberpunk' => [[2, 6, 23], [14, 165, 233], [217, 70, 239]],
-            'minimalist' => [[15, 23, 42], [51, 65, 85], [226, 232, 240]],
+            'luxury', 'luxury_editorial' => [[8, 10, 18], [56, 42, 38], [232, 199, 126]],
+            'cyberpunk', 'social_viral' => [[3, 7, 18], [18, 91, 120], [236, 72, 153]],
+            'canvas_campaign', 'award_campaign' => [[16, 24, 39], [52, 64, 84], [125, 211, 252]],
+            'minimalist', 'clean_studio' => [[235, 239, 246], [203, 213, 225], [59, 130, 246]],
+            'lifestyle_ad' => [[32, 45, 38], [88, 120, 92], [246, 214, 170]],
+            'premium_packshot' => [[10, 15, 28], [31, 41, 55], [147, 197, 253]],
             default => [[2, 6, 23], [30, 64, 175], [168, 85, 247]],
         };
 
@@ -342,7 +389,7 @@ class AiImageGenerationService
         );
         $this->wrapText(
             $image,
-            Str::limit($generation->prompt ?: 'Cinematic product image generated for marketing campaigns.', 150),
+            Str::limit($generation->prompt ?: 'Cinematic physical scene generated for visual exploration.', 150),
             $x,
             (int) ($height * .76),
             (int) ($width * .84),

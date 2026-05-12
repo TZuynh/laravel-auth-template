@@ -89,4 +89,9 @@ class VideoProject extends Model
     {
         return $this->hasMany(Subtitle::class);
     }
+
+    public function videoVersions(): HasMany
+    {
+        return $this->hasMany(VideoVersion::class);
+    }
 }

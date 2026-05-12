@@ -6,9 +6,13 @@ use App\Enums\AiPromptStatus;
 use App\Enums\AiPromptType;
 use App\Models\AiPrompt;
 use App\Services\AI\Contracts\AiProviderInterface;
+use App\Services\AI\Providers\ComfyUiProvider;
 use App\Services\AI\Providers\ElevenLabsProvider;
+use App\Services\AI\Providers\FalProvider;
 use App\Services\AI\Providers\KlingProvider;
 use App\Services\AI\Providers\OpenAiProvider;
+use App\Services\AI\Providers\PollinationsProvider;
+use App\Services\AI\Providers\ReplicateProvider;
 use App\Services\AI\Providers\RunwayProvider;
 use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
@@ -23,6 +27,10 @@ class AiProviderManager
     {
         $this->providers = [
             'openai' => app(OpenAiProvider::class),
+            'pollinations' => app(PollinationsProvider::class),
+            'comfyui' => app(ComfyUiProvider::class),
+            'fal' => app(FalProvider::class),
+            'replicate' => app(ReplicateProvider::class),
             'kling' => app(KlingProvider::class),
             'runway' => app(RunwayProvider::class),
             'elevenlabs' => app(ElevenLabsProvider::class),
@@ -31,7 +39,9 @@ class AiProviderManager
 
     public function generate(string $capability, array $payload, ?string $preferredProvider = null): AiProviderResponse
     {
-        $payload['prompt'] = $this->optimizePrompt((string) ($payload['prompt'] ?? ''), $capability, $payload);
+        if (!($payload['skip_prompt_optimization'] ?? false)) {
+            $payload['prompt'] = $this->optimizePrompt((string) ($payload['prompt'] ?? ''), $capability, $payload);
+        }
         $providers = $this->providerOrder($capability, $preferredProvider);
         $lastException = null;
 
@@ -85,6 +95,10 @@ class AiProviderManager
 
     private function providerOrder(string $capability, ?string $preferredProvider): array
     {
+        if (in_array($preferredProvider, ['comfyui', 'pollinations'], true)) {
+            return [$preferredProvider];
+        }
+
         $fallbacks = config("ai_providers.fallbacks.{$capability}", []);
 
         if ($preferredProvider) {

@@ -22,6 +22,12 @@
                 </div>
             @endif
 
+            @if(session('status'))
+                <div class="mb-6 rounded-r-2xl border-l-4 border-emerald-500 bg-emerald-50 p-4 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                    {{ session('status') }}
+                </div>
+            @endif
+
             <form action="{{ route('login.post') }}" method="POST" class="space-y-6">
                 @csrf
 
@@ -37,7 +43,7 @@
                         <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-focus-within:text-indigo-500">
                             {{ __('messages.auth.password_label') }}
                         </label>
-                        <a href="#" class="text-[10px] font-black uppercase tracking-widest text-indigo-600 transition-all hover:text-indigo-700">
+                        <a href="{{ route('password.request') }}" class="text-[10px] font-black uppercase tracking-widest text-indigo-600 transition-all hover:text-indigo-700">
                             {{ __('messages.auth.forgot') }}
                         </a>
                     </div>
@@ -69,14 +75,9 @@
                 </button>
             </form>
 
-            <div class="mt-10 text-center">
-                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    {{ __('messages.auth.no_account') }}
-                    <a href="{{ route('register') }}" class="ml-1 font-bold text-indigo-600 underline decoration-2 underline-offset-4 decoration-indigo-100 transition-colors hover:text-indigo-700 hover:decoration-indigo-500">
-                        {{ __('messages.auth.register_now') }}
-                    </a>
-                </p>
-            </div>
+            <p class="mt-10 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+                Accounts are created by the administrator.
+            </p>
         </div>
 
         <div class="mt-8 flex items-center justify-center gap-4">

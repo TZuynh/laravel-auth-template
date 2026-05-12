@@ -4,6 +4,8 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\AiTemplate;
 use App\Models\AiImageGeneration;
+use App\Models\BrainMemory;
+use App\Models\ContentAiDraft;
 use App\Models\Export;
 use App\Models\MusicTrack;
 use App\Models\Product;
@@ -184,6 +186,80 @@ class MarketingRepository implements MarketingRepositoryInterface
         ];
     }
 
+    public function contentHubData(): array
+    {
+        $selectedDraftId = request()->integer('draft');
+        $drafts = rescue(fn () => ContentAiDraft::query()
+            ->with('product')
+            ->latest('id')
+            ->limit(30)
+            ->get(), collect(), false);
+        $selected = $drafts->firstWhere('id', $selectedDraftId) ?: $drafts->first();
+
+        return [
+            'products' => $this->productOptions(40),
+            'platforms' => [
+                ['value' => 'facebook', 'label' => 'Facebook', 'icon' => 'f'],
+                ['value' => 'instagram', 'label' => 'Instagram', 'icon' => '◎'],
+                ['value' => 'linkedin', 'label' => 'LinkedIn', 'icon' => 'in'],
+                ['value' => 'email', 'label' => 'Email', 'icon' => '✉'],
+                ['value' => 'zalo', 'label' => 'Zalo', 'icon' => '◌'],
+                ['value' => 'tiktok', 'label' => 'TikTok', 'icon' => '▷'],
+            ],
+            'platform_ideas' => $this->platformIdeas(),
+            'tones' => [
+                ['value' => 'expert', 'label' => 'Expert'],
+                ['value' => 'friendly', 'label' => 'Thân thiện'],
+                ['value' => 'premium', 'label' => 'Cao cấp'],
+                ['value' => 'viral', 'label' => 'Viral'],
+                ['value' => 'direct', 'label' => 'Bán hàng trực diện'],
+            ],
+            'drafts' => $drafts
+                ->map(fn (ContentAiDraft $draft): array => $this->contentDraftPayload($draft))
+                ->all(),
+            'selected' => $selected ? $this->contentDraftPayload($selected) : null,
+        ];
+    }
+
+    public function brainTrainingData(): array
+    {
+        $memories = rescue(fn () => BrainMemory::query()
+            ->latest('id')
+            ->limit(60)
+            ->get(), collect(), false);
+
+        $categories = [
+            ['value' => 'all', 'label' => 'Tất cả', 'count' => $memories->count()],
+            ['value' => 'voice_style', 'label' => 'Giọng văn & Phong cách', 'count' => $memories->where('category', 'voice_style')->count()],
+            ['value' => 'usp', 'label' => 'Điểm mạnh (USP)', 'count' => $memories->where('category', 'usp')->count()],
+            ['value' => 'faq', 'label' => 'Câu hỏi thường gặp', 'count' => $memories->where('category', 'faq')->count()],
+            ['value' => 'offer', 'label' => 'Ưu đãi', 'count' => $memories->where('category', 'offer')->count()],
+            ['value' => 'customer_insight', 'label' => 'Insight khách hàng', 'count' => $memories->where('category', 'customer_insight')->count()],
+            ['value' => 'brand_rule', 'label' => 'Quy tắc thương hiệu', 'count' => $memories->where('category', 'brand_rule')->count()],
+        ];
+
+        return [
+            'active_category' => request('category', 'all'),
+            'quick_starts' => [
+                ['category' => 'voice_style', 'topic' => 'Giọng văn mặc định', 'content' => 'Viết rõ ràng, tự nhiên, không phóng đại. Ưu tiên câu ngắn, có cảm xúc và CTA cụ thể.'],
+                ['category' => 'usp', 'topic' => 'Điểm mạnh sản phẩm', 'content' => 'Nhấn mạnh lợi ích thật, bằng chứng tin cậy và lý do khách nên chọn thương hiệu.'],
+                ['category' => 'customer_insight', 'topic' => 'Nỗi đau khách hàng', 'content' => 'Khách cần giải pháp nhanh, dễ hiểu, ít rủi ro và thấy được kết quả trước khi quyết định.'],
+                ['category' => 'brand_rule', 'topic' => 'Quy tắc thương hiệu', 'content' => 'Không dùng ngôn từ giật gân quá mức. Luôn giữ giọng chuyên nghiệp, hữu ích và đáng tin.'],
+            ],
+            'categories' => $categories,
+            'memories' => $memories
+                ->map(fn (BrainMemory $memory): array => [
+                    'id' => $memory->id,
+                    'category' => $memory->category,
+                    'category_label' => collect($categories)->firstWhere('value', $memory->category)['label'] ?? $memory->category,
+                    'topic' => $memory->topic ?: 'Không tiêu đề',
+                    'content' => $memory->content,
+                    'created' => $memory->created_at?->format('d/m/Y H:i') ?? '-',
+                ])
+                ->all(),
+        ];
+    }
+
     public function sceneEditorData(): array
     {
         $latestProject = rescue(fn () => VideoProject::query()
@@ -227,23 +303,42 @@ class MarketingRepository implements MarketingRepositoryInterface
         return [
             'products' => $this->productOptions(40),
             'styles' => [
+                ['value' => 'premium_packshot', 'label' => 'Premium packshot'],
+                ['value' => 'luxury_editorial', 'label' => 'Luxury editorial'],
+                ['value' => 'clean_studio', 'label' => 'Clean studio'],
+                ['value' => 'lifestyle_ad', 'label' => 'Lifestyle ad'],
+                ['value' => 'social_viral', 'label' => 'Social viral'],
+                ['value' => 'award_campaign', 'label' => 'Gallery cinematic'],
                 ['value' => 'cinematic', 'label' => 'Cinematic commerce'],
-                ['value' => 'luxury', 'label' => 'Luxury editorial'],
-                ['value' => 'minimalist', 'label' => 'Apple clean studio'],
-                ['value' => 'cyberpunk', 'label' => 'Neon viral'],
             ],
             'aspects' => [
-                ['value' => '9:16', 'label' => '9:16 TikTok/Reels'],
-                ['value' => '16:9', 'label' => '16:9 YouTube'],
-                ['value' => '1:1', 'label' => '1:1 Instagram'],
-                ['value' => '4:5', 'label' => '4:5 Feed'],
+                ['value' => '9:16', 'label' => '9:16 dọc'],
+                ['value' => '16:9', 'label' => '16:9 ngang'],
+                ['value' => '1:1', 'label' => '1:1 vuông'],
+                ['value' => '4:5', 'label' => '4:5 dọc'],
+            ],
+            'random_prompts' => [
+                'Luxury contemporary art gallery interior, textured concrete wall, warm cinematic spotlight, reflective polished floor',
+                'Soft gradient studio environment, floating physical object, clean shadow, natural perspective depth',
+                'Editorial interior photography scene, premium props, warm key light, rich textures, high-end realism',
+                'Bold cinematic physical scene, strong color contrast, dramatic crop, premium reflections, refined atmosphere',
+                'Minimal product still life, soft reflection, airy atmosphere, realistic material textures',
             ],
             'providers' => [
+                ['value' => 'pollinations', 'label' => 'Pollinations Flux API'],
+                ['value' => 'comfyui', 'label' => 'ComfyUI Local GPU'],
                 ['value' => 'openai', 'label' => 'OpenAI Image'],
-                ['value' => 'local-cinematic', 'label' => 'Local cinematic fallback'],
+                ['value' => 'fal', 'label' => 'fal.ai Flux'],
+                ['value' => 'replicate', 'label' => 'Replicate'],
+                ['value' => 'local-cinematic', 'label' => 'Local pro fallback'],
             ],
             'models' => [
+                ['value' => 'flux', 'label' => 'Pollinations Flux'],
+                ['value' => 'flux_schnell', 'label' => 'FLUX Schnell local'],
+                ['value' => 'sd15', 'label' => 'Stable Diffusion 1.5 local'],
                 ['value' => config('ai_providers.providers.openai.image_model', 'gpt-image-1'), 'label' => 'OpenAI image model'],
+                ['value' => config('ai_providers.providers.fal.image_model', 'fal-ai/flux-pro/v1.1'), 'label' => 'Flux Pro'],
+                ['value' => config('ai_providers.providers.replicate.image_model', ''), 'label' => 'Replicate configured model'],
                 ['value' => 'dall-e-3', 'label' => 'DALL-E 3'],
             ],
             'generations' => rescue(fn () => AiImageGeneration::query()
@@ -259,6 +354,9 @@ class MarketingRepository implements MarketingRepositoryInterface
                     'provider' => $generation->provider,
                     'status' => $generation->status,
                     'prompt' => $generation->prompt,
+                    'optimized_prompt' => $generation->optimized_prompt,
+                    'negative_prompt' => $generation->negative_prompt,
+                    'prompt_package' => $generation->metadata['prompt_package'] ?? null,
                     'image' => $generation->imageUrl(),
                     'path' => $generation->image_path,
                     'size' => ($generation->width ?: '-') . 'x' . ($generation->height ?: '-'),
@@ -411,6 +509,60 @@ class MarketingRepository implements MarketingRepositoryInterface
             })
             ->values()
             ->all();
+    }
+
+    private function platformIdeas(): array
+    {
+        return [
+            'facebook' => [
+                'Kể câu chuyện khách hàng trước và sau khi sử dụng sản phẩm',
+                'Bài post mở thảo luận về sai lầm thường gặp của khách hàng',
+                'Minigame nhẹ nhàng để tăng bình luận và inbox',
+            ],
+            'instagram' => [
+                'Caption carousel 5 ảnh với hook cảm xúc và CTA lưu bài',
+                'Bài đăng visual premium cho sản phẩm mới',
+                'Story caption tạo cảm giác muốn chia sẻ ngay',
+            ],
+            'linkedin' => [
+                'Bài phân tích insight thị trường theo góc nhìn chuyên gia',
+                'Thought leadership về vấn đề khách hàng đang gặp',
+                'Bài chia sẻ case study ngắn, rõ kết quả',
+            ],
+            'email' => [
+                'Email chăm sóc khách cũ bằng ưu đãi có lý do rõ ràng',
+                'Email giới thiệu lợi ích chính trong 30 giây đọc',
+                'Email nhắc khách quay lại với mở đầu cá nhân hóa',
+            ],
+            'zalo' => [
+                'Tin nhắn ngắn thông báo ưu đãi hôm nay',
+                'Kịch bản chăm sóc khách đang phân vân',
+                'Tin nhắn gợi lại nhu cầu và mời phản hồi nhanh',
+            ],
+            'tiktok' => [
+                'Hook 3 giây cho video về nỗi đau của khách',
+                'Caption bắt trend nhưng vẫn có CTA bán hàng',
+                'Kịch bản short caption theo problem, solution, CTA',
+            ],
+        ];
+    }
+
+    private function contentDraftPayload(ContentAiDraft $draft): array
+    {
+        return [
+            'id' => $draft->id,
+            'title' => $draft->title ?: 'Bản thảo nội dung',
+            'platform' => $draft->platform,
+            'platform_label' => $draft->metadata['platform_label'] ?? ucfirst($draft->platform),
+            'product' => $draft->product?->name,
+            'status' => $draft->status,
+            'tone' => $draft->tone,
+            'audience' => $draft->audience,
+            'content' => $draft->content,
+            'prompt' => $draft->prompt,
+            'source' => $draft->metadata['source'] ?? 'local',
+            'created' => $draft->created_at?->format('d/m/Y H:i') ?? '-',
+        ];
     }
 
     private function fallbackProducts(): array

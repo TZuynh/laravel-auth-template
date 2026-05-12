@@ -27,12 +27,23 @@ class SceneSplitRequest(BaseModel):
 
 class Scene(BaseModel):
     index: int
+    type: str = "scene"
     title: str
     prompt: str
+    shot_type: str = "medium shot"
+    camera: str = "cinematic_zoom"
+    visual: str = ""
+    b_roll_direction: str = ""
     voice_over: str
     subtitle: str
     duration: float
-    transition: str = "bloom_cut"
+    transition: str = "fade"
+    sound_effect: str = "soft_whoosh"
+    pacing: str = "medium"
+    emotional_tone: str = "confident"
+    subtitle_cues: list[dict] = []
+    asset_plan: dict = {}
+    motion: dict = {}
 
 
 class SceneSplitResponse(BaseModel):
@@ -42,7 +53,7 @@ class SceneSplitResponse(BaseModel):
 class AssetRequest(BaseModel):
     prompt: str = Field(min_length=1)
     workflow: dict | None = None
-    provider: Literal["comfyui", "fal", "replicate", "local"] = "local"
+    provider: Literal["comfyui", "fal", "replicate", "kling", "wan", "ltx", "minimax", "veo", "local"] = "local"
     aspect_ratio: AspectRatio = "9:16"
     source_image_url: HttpUrl | None = None
 
@@ -71,6 +82,8 @@ class SubtitleRequest(BaseModel):
     text: str = Field(min_length=1)
     language: Literal["vi", "en"] = "vi"
     style: Literal["srt", "vtt", "karaoke"] = "srt"
+    audio_path: str | None = None
+    use_whisper: bool = True
 
 
 class SubtitleResponse(BaseModel):
@@ -105,3 +118,25 @@ class TimelineRenderResponse(BaseModel):
     duration_seconds: float
     metadata: dict = {}
 
+
+class BulkGenerationRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=5000)
+    style_slug: Literal["ai_studio", "tiktok_viral", "cinematic", "anime", "motivation", "modern_minimal"] = "ai_studio"
+    language: Literal["vi", "en"] = "en"
+    duration_seconds: int = Field(default=30, ge=10, le=90)
+    aspect_ratio: AspectRatio = "9:16"
+
+
+class BulkVideoOutput(BaseModel):
+    title: str
+    style: str
+    duration: str
+    scenes: list[Scene]
+    voice: str
+    music: str
+    subtitle_style: str
+    timeline_json: dict
+
+
+class BulkGenerationResponse(BaseModel):
+    videos: list[BulkVideoOutput]

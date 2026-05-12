@@ -152,7 +152,7 @@
 }
 
 .app-main-content .max-w-\[1540px\] {
-    max-width: 1380px !important;
+    max-width: 1760px !important;
 }
 
 .app-main-content .space-y-8 > :not([hidden]) ~ :not([hidden]) {
@@ -224,15 +224,19 @@
     border-radius: 0.95rem !important;
 }
 
-.app-main-content .h-16,
-.app-main-content .w-16 {
+.app-main-content .h-16 {
     height: 3rem !important;
+}
+
+.app-main-content .w-16 {
     width: 3rem !important;
 }
 
-.app-main-content .h-14,
-.app-main-content .w-14 {
+.app-main-content .h-14 {
     height: 2.75rem !important;
+}
+
+.app-main-content .w-14 {
     width: 2.75rem !important;
 }
 

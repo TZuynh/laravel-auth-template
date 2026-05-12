@@ -6,12 +6,9 @@
 
 @php
     $tabs = [
-        ['key' => 'director', 'label' => 'AI Director', 'route' => 'marketing.index'],
-        ['key' => 'scenes', 'label' => 'Scene Editor', 'route' => 'marketing.scenes'],
+        ['key' => 'content', 'label' => 'Content AI', 'route' => 'marketing.content.index'],
         ['key' => 'images', 'label' => 'AI Images', 'route' => 'marketing.images'],
-        ['key' => 'renders', 'label' => 'Render History', 'route' => 'marketing.render-history'],
-        ['key' => 'exports', 'label' => 'Export Manager', 'route' => 'marketing.exports'],
-        ['key' => 'templates', 'label' => 'Templates', 'route' => 'marketing.templates'],
+        ['key' => 'brain', 'label' => 'Brain AI', 'route' => 'marketing.brain.index'],
     ];
 @endphp
 
@@ -54,7 +51,7 @@
                 <p class="text-[11px] font-black uppercase tracking-[0.34em] text-blue-200/70">{{ $eyebrow }}</p>
                 <h1 class="mt-2 text-3xl font-black tracking-tight text-white md:text-4xl">{{ $title }}</h1>
                 <p class="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-300">
-                    Dựng video quảng cáo AI có chuyển động camera, ánh sáng điện ảnh, giọng đọc, nhạc nền và timeline render thực tế.
+                    Viết nội dung social, tạo hình ảnh quảng cáo chuyên nghiệp và huấn luyện bộ nhớ thương hiệu cho AI.
                 </p>
             </div>
 

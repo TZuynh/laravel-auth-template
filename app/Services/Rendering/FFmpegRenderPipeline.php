@@ -49,7 +49,8 @@ class FFmpegRenderPipeline
             $this->mark($job, RenderJobStatus::Rendering, 10 + ($index * 12), "Rendering scene {$scene->sort_order}");
 
             $asset = $scene->sceneAssets
-                ->first(fn (SceneAsset $sceneAsset): bool => in_array((string) $sceneAsset->type?->value, ['generated_video', 'generated_image'], true));
+                ->sortBy(fn (SceneAsset $sceneAsset): int => (string) $sceneAsset->type?->value === 'generated_image' ? 0 : 1)
+                ->first(fn (SceneAsset $sceneAsset): bool => in_array((string) $sceneAsset->type?->value, ['generated_image', 'product_image'], true));
             $sourceImagePath = $this->resolveSceneSourceImage(
                 $asset?->path ?? $this->productImagePath($project),
                 $workspace,
@@ -66,6 +67,7 @@ class FFmpegRenderPipeline
 
             $clipPath = $workspace . DIRECTORY_SEPARATOR . sprintf('scene_%02d.mp4', $scene->sort_order);
             $this->renderSceneClip(
+                scene: $scene,
                 inputPath: $sceneImagePath,
                 outputPath: $clipPath,
                 width: $format['width'],
@@ -328,11 +330,14 @@ class FFmpegRenderPipeline
         $this->drawWrappedText($image, $this->shortProductName($project), (int) ($width * 0.055), (int) ($height * 0.34), (int) ($width * 0.32), max(18, (int) ($height * 0.026)), $muted, $font, 3);
     }
 
-    private function renderSceneClip(?string $inputPath, string $outputPath, int $width, int $height, float $duration, string $subtitle): void
+    private function renderSceneClip(VideoScene $scene, ?string $inputPath, string $outputPath, int $width, int $height, float $duration, string $subtitle): void
     {
-        $fps = (string) config('ai_video.ffmpeg.fps', 30);
+        $fps = (int) config('ai_video.ffmpeg.fps', 30);
+        $motionFilter = $this->motionFilter($scene, $width, $height, $fps);
         $subtitleFilter = $this->subtitleFilter($subtitle, $height);
-        $vf = "scale={$width}:{$height}:force_original_aspect_ratio=increase,crop={$width}:{$height},zoompan=z='min(zoom+0.0018,1.08)':d=1:s={$width}x{$height}:fps={$fps},{$subtitleFilter},format=yuv420p";
+        $karaokeFilter = $this->karaokeSubtitleFilters($scene, $height);
+        $sceneEffects = $this->sceneEffectFilters($scene, $duration);
+        $vf = "{$motionFilter},{$sceneEffects},{$subtitleFilter}{$karaokeFilter},format=yuv420p";
 
         $resolvedInputPath = $this->resolveMediaPath($inputPath);
 
@@ -403,6 +408,51 @@ class FFmpegRenderPipeline
         ]);
     }
 
+    private function motionFilter(VideoScene $scene, int $width, int $height, int $fps): string
+    {
+        $motion = $scene->metadata['motion'] ?? [];
+        $camera = (string) ($scene->camera_movement ?: data_get($scene->metadata, 'camera', 'cinematic_zoom'));
+        $duration = max(1.0, (float) $scene->duration_seconds);
+        $frames = max(1, (int) round($duration * $fps));
+        $zoomStart = (float) data_get($motion, 'zoom_start', 1.0);
+        $zoomEnd = (float) data_get($motion, 'zoom_end', $camera === 'snap_zoom' ? 1.24 : 1.12);
+        $zoomDelta = max(0.00001, ($zoomEnd - $zoomStart) / $frames);
+        $z = sprintf('min(%.5f+on*%.8f,%.5f)', $zoomStart, $zoomDelta, $zoomEnd);
+        $x = 'iw/2-(iw/zoom/2)';
+        $y = 'ih/2-(ih/zoom/2)';
+
+        if (in_array($camera, ['snap_zoom', 'handheld_push'], true)) {
+            $shake = max(1, (int) round(((float) data_get($motion, 'shake', 0.008)) * 900));
+            $x .= "+sin(on*0.62)*{$shake}";
+            $y .= "+cos(on*0.55)*{$shake}";
+        }
+
+        if ($camera === 'parallax_push') {
+            $x .= '+sin(on*0.025)*42';
+            $y .= '+cos(on*0.022)*24';
+        }
+
+        return "scale={$width}:{$height}:force_original_aspect_ratio=increase,crop={$width}:{$height},zoompan=z='{$z}':x='{$x}':y='{$y}':d=1:s={$width}x{$height}:fps={$fps}";
+    }
+
+    private function sceneEffectFilters(VideoScene $scene, float $duration): string
+    {
+        $filters = [
+            'fade=t=in:st=0:d=0.14',
+            'fade=t=out:st=' . max($duration - 0.24, 0.1) . ':d=0.2',
+        ];
+
+        if ((bool) data_get($scene->metadata, 'motion.motion_blur', false)) {
+            $filters[] = "tmix=frames=2:weights='1 1'";
+        }
+
+        if ((string) data_get($scene->metadata, 'scene_type') === 'hook') {
+            $filters[] = 'eq=contrast=1.12:saturation=1.18';
+        }
+
+        return implode(',', $filters);
+    }
+
     private function resolveMediaPath(?string $path): ?string
     {
         if (!$path) {
@@ -427,11 +477,45 @@ class FFmpegRenderPipeline
 
     private function subtitleFilter(string $subtitle, int $height): string
     {
-        $text = str_replace(["\\", "'", ':', ',', '%', '[', ']', "\r", "\n"], ['\\\\', "\\'", '\\:', '\\,', '\\%', '\\[', '\\]', ' ', ' '], $subtitle);
+        $text = $this->escapeDrawText($subtitle);
         $fontSize = max(36, (int) round($height * 0.036));
         $y = (int) round($height * 0.78);
 
         return "drawtext=text='{$text}':fontcolor=white:fontsize={$fontSize}:x=(w-text_w)/2:y={$y}:box=1:boxcolor=black@0.42:boxborderw=28";
+    }
+
+    private function karaokeSubtitleFilters(VideoScene $scene, int $height): string
+    {
+        $cues = array_slice((array) data_get($scene->metadata, 'subtitle_cues', []), 0, 14);
+        if ($cues === []) {
+            return '';
+        }
+
+        $fontSize = max(44, (int) round($height * 0.046));
+        $y = (int) round($height * 0.68);
+        $filters = '';
+
+        foreach ($cues as $cue) {
+            $word = $this->escapeDrawText(Str::upper((string) ($cue['word'] ?? '')));
+            if ($word === '') {
+                continue;
+            }
+
+            $start = max(0, (float) ($cue['start'] ?? 0));
+            $end = max($start + 0.08, (float) ($cue['end'] ?? ($start + 0.35)));
+            $filters .= ",drawtext=text='{$word}':fontcolor=0xFACC15:fontsize={$fontSize}:x=(w-text_w)/2:y={$y}:box=1:boxcolor=black@0.35:boxborderw=20:enable='between(t,{$start},{$end})'";
+        }
+
+        return $filters;
+    }
+
+    private function escapeDrawText(string $text): string
+    {
+        return str_replace(
+            ["\\", "'", ':', ',', '%', '[', ']', "\r", "\n"],
+            ['\\\\', "\\'", '\\:', '\\,', '\\%', '\\[', '\\]', ' ', ' '],
+            $text
+        );
     }
 
     private function createAudioTrack(VideoProject $project, $scenes, string $workspace, float $duration): ?string

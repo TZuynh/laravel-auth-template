@@ -18,7 +18,7 @@
                     </p>
                 </div>
 
-                <form method="POST" action="{{ route('marketing.render-history.clear-completed') }}" onsubmit="return confirm('Xóa tất cả job đã hoàn tất/lỗi và file MP4 liên quan?')">
+                <form method="POST" action="{{ route('marketing.render-history.clear-completed') }}" data-confirm="Xóa tất cả job đã hoàn tất/lỗi và file MP4 liên quan?">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="rounded-2xl bg-rose-500/90 px-4 py-3 text-xs font-black text-white shadow-lg shadow-rose-950/30 transition hover:bg-rose-400">
@@ -72,7 +72,7 @@
                                     <span class="{{ $statusClass }} rounded-full px-3 py-1 text-xs font-black uppercase">{{ $job['status'] }}</span>
                                 </td>
                                 <td class="px-5 py-4 text-right">
-                                    <form method="POST" action="{{ route('marketing.render-history.destroy', $job['id']) }}" onsubmit="return confirm('Xóa render job này và file MP4 liên quan?')">
+                                    <form method="POST" action="{{ route('marketing.render-history.destroy', $job['id']) }}" data-confirm="Xóa render job này và file MP4 liên quan?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="rounded-2xl bg-white/10 px-4 py-2 text-xs font-black text-rose-100 transition hover:bg-rose-500/80 hover:text-white">

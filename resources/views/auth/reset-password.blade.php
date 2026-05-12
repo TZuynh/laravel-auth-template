@@ -1,41 +1,56 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Password Reset Request</title>
-</head>
-<body style="background: linear-gradient(to bottom right, #eef2ff, #e0e7ff); font-family: 'Inter', Arial, sans-serif; padding: 40px; color: #1e293b;">
-<table align="center" width="100%" style="max-width: 600px; background: white; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); overflow: hidden;">
-    <tr>
-        <td style="padding: 40px 30px;">
-            <h1 style="font-size: 24px; color: #4f46e5; margin-bottom: 16px; text-align:center;">
-                🔒 Password Reset Request
-            </h1>
-
-            <p style="font-size: 15px; color: #374151; line-height: 1.6;">
-                Hello, <br><br>
-                You are receiving this email because we received a password reset request for your account.
-            </p>
-
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{{ $url }}"
-                   style="background: #4f46e5; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-                    Reset Password
-                </a>
+<x-layouts.auth title="Reset Password">
+    <div class="w-full max-w-md px-4">
+        <div class="rounded-[2rem] border border-slate-200/80 bg-white/95 p-8 shadow-[0_20px_50px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900/90">
+            <div class="mb-8 text-center">
+                <div class="mb-4 inline-flex rounded-2xl bg-indigo-50 p-3 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                    <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Enter reset code</h2>
+                <p class="mt-3 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
+                    Check your Gmail inbox, enter the 6-digit code, then choose a new password.
+                </p>
             </div>
 
-            <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
-                This password reset link will expire in 60 minutes. <br>
-                If you did not request a password reset, no further action is required.
-            </p>
+            @if(session('status'))
+                <div class="mb-5 rounded-r-2xl border-l-4 border-emerald-500 bg-emerald-50 p-4 text-xs font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                    {{ session('status') }}
+                </div>
+            @endif
 
-            <hr style="border:none; border-top:1px solid #e5e7eb; margin:30px 0;">
+            @if($errors->any())
+                <div class="mb-5 rounded-r-2xl border-l-4 border-rose-500 bg-rose-50 p-4 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                    {{ $errors->first() }}
+                </div>
+            @endif
 
-            <p style="font-size: 13px; color: #9ca3af; text-align:center;">
-                &copy; {{ date('Y') }} Laravel Auth Template. All rights reserved.
-            </p>
-        </td>
-    </tr>
-</table>
-</body>
-</html>
+            <form method="POST" action="{{ route('password.update') }}" class="space-y-5">
+                @csrf
+                <div>
+                    <label class="mb-2 ml-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Email</label>
+                    <input type="email" name="email" value="{{ old('email', $email ?? '') }}" required class="w-full rounded-2xl border border-transparent bg-slate-100/70 px-5 py-4 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:bg-slate-800/80 dark:text-slate-100">
+                </div>
+
+                <div>
+                    <label class="mb-2 ml-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Reset code</label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" name="code" value="{{ old('code') }}" required autofocus placeholder="123456" class="w-full rounded-2xl border border-transparent bg-slate-100/70 px-5 py-4 text-center text-xl font-black tracking-[0.45em] text-slate-900 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:bg-slate-800/80 dark:text-slate-100">
+                </div>
+
+                <div>
+                    <label class="mb-2 ml-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">New password</label>
+                    <input type="password" name="password" required class="w-full rounded-2xl border border-transparent bg-slate-100/70 px-5 py-4 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:bg-slate-800/80 dark:text-slate-100">
+                </div>
+
+                <div>
+                    <label class="mb-2 ml-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Confirm password</label>
+                    <input type="password" name="password_confirmation" required class="w-full rounded-2xl border border-transparent bg-slate-100/70 px-5 py-4 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:bg-slate-800/80 dark:text-slate-100">
+                </div>
+
+                <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-slate-900 py-4 font-bold text-white shadow-xl shadow-indigo-100 transition-all hover:bg-indigo-600 active:scale-[0.98] dark:bg-indigo-600 dark:shadow-none">
+                    Update password
+                </button>
+            </form>
+        </div>
+    </div>
+</x-layouts.auth>

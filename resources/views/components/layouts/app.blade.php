@@ -31,7 +31,7 @@
             </header>
 
             <main class="app-main-content flex-1 overflow-y-auto bg-[#f6f8fb] p-4 md:p-6 dark:bg-slate-950">
-                <div class="mx-auto w-full max-w-[1540px]">
+                <div class="mx-auto w-full max-w-[1760px]">
                     <x-flash-banner />
                     {{ $slot }}
                 </div>

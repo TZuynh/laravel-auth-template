@@ -45,6 +45,36 @@ class ShotstackService
     }
 
     /**
+     * Return the Shotstack render status response for a queued render id.
+     *
+     * @throws RequestException
+     */
+    public function status(string $renderId, bool $includeData = false): array
+    {
+        $response = Http::acceptJson()
+            ->withHeaders([
+                'x-api-key' => $this->apiKey(),
+            ])
+            ->timeout((int) config('shotstack.timeout', 120))
+            ->retry(
+                (int) config('shotstack.retry_times', 3),
+                (int) config('shotstack.retry_sleep', 1000),
+                fn (): bool => true
+            )
+            ->get($this->renderEndpoint() . '/' . $renderId, [
+                'data' => $includeData ? 'true' : 'false',
+            ])
+            ->throw()
+            ->json();
+
+        if (!is_array($response)) {
+            throw new RuntimeException('Shotstack status response was not valid JSON.');
+        }
+
+        return $response;
+    }
+
+    /**
      * Dispatch a queued render job. The job calls render() and logs the render id.
      *
      * @throws ValidationException

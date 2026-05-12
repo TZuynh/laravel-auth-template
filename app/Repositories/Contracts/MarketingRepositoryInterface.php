@@ -8,6 +8,10 @@ interface MarketingRepositoryInterface
 
     public function directorDashboardData(): array;
 
+    public function contentHubData(): array;
+
+    public function brainTrainingData(): array;
+
     public function sceneEditorData(): array;
 
     public function aiImageStudioData(): array;

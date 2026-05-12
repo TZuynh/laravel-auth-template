@@ -6,6 +6,7 @@ use App\Models\AiTemplate;
 use App\Models\MusicTrack;
 use App\Models\Product;
 use App\Models\ProductAsset;
+use App\Models\Template;
 use App\Models\Transition;
 use App\Models\User;
 use App\Models\VoiceProfile;
@@ -16,9 +17,36 @@ class AiVideoCatalogSeeder extends Seeder
     public function run(): void
     {
         $this->seedTemplates();
+        $this->seedBulkStyleTemplates();
         $this->seedTransitions();
         $this->seedVoices();
         $this->seedMusic();
+    }
+
+    private function seedBulkStyleTemplates(): void
+    {
+        $templates = [
+            ['name' => 'TikTok Viral', 'slug' => 'bulk-tiktok-viral', 'platform' => 'tiktok', 'style' => 'viral_tiktok'],
+            ['name' => 'Cinematic', 'slug' => 'bulk-cinematic', 'platform' => 'youtube', 'style' => 'cinematic'],
+            ['name' => 'Anime', 'slug' => 'bulk-anime', 'platform' => 'shorts', 'style' => 'anime'],
+            ['name' => 'Motivational Shorts', 'slug' => 'bulk-motivation', 'platform' => 'reels', 'style' => 'motivation'],
+            ['name' => 'Modern Minimal', 'slug' => 'bulk-modern-minimal', 'platform' => 'linkedin', 'style' => 'modern_minimal'],
+        ];
+
+        foreach ($templates as $template) {
+            Template::updateOrCreate(
+                ['slug' => $template['slug']],
+                [
+                    'name' => $template['name'],
+                    'type' => 'bulk_video_style',
+                    'platform' => $template['platform'],
+                    'style' => $template['style'],
+                    'description' => 'Bulk AI video style preset for one-prompt multi-version generation.',
+                    'settings' => ['version_count' => 5],
+                    'is_active' => true,
+                ]
+            );
+        }
     }
 
     private function seedProduct(?int $userId): void

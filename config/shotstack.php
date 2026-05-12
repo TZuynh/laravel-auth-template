@@ -8,4 +8,5 @@ return [
     'retry_times' => (int) env('SHOTSTACK_RETRY_TIMES', 3),
     'retry_sleep' => (int) env('SHOTSTACK_RETRY_SLEEP', 1000),
     'queue' => env('SHOTSTACK_QUEUE', 'render'),
+    'callback_url' => env('SHOTSTACK_CALLBACK_URL'),
 ];

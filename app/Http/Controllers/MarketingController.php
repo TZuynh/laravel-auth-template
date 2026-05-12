@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\VideoProjectStatus;
 use App\Enums\VideoSceneStatus;
 use App\Models\AiImageGeneration;
+use App\Models\BrainMemory;
+use App\Models\ContentAiDraft;
 use App\Models\Export as VideoExport;
 use App\Models\Product;
 use App\Models\RenderJob;
@@ -12,9 +14,13 @@ use App\Models\Transition;
 use App\Models\VideoProject;
 use App\Repositories\Contracts\MarketingRepositoryInterface;
 use App\Services\Marketing\AiImageGenerationService;
+use App\Services\Marketing\BrainTrainingService;
+use App\Services\Marketing\ContentAiService;
+use App\Services\Marketing\EdgeTtsService;
 use App\Services\Marketing\SceneGenerationService;
 use App\Services\Rendering\RenderArtifactCleanupService;
 use App\Services\Rendering\RenderJobDispatcher;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -22,12 +28,110 @@ use Illuminate\Support\Str;
 
 class MarketingController extends Controller
 {
-    public function index(MarketingRepositoryInterface $marketing): \Illuminate\Contracts\View\View
+    public function index(): RedirectResponse
     {
-        return view('marketing.index', [
-            'studio' => $marketing->aiVideoStudioData(),
-            'dashboard' => $marketing->directorDashboardData(),
+        return redirect()->route('marketing.content.index');
+    }
+
+    public function content(MarketingRepositoryInterface $marketing): \Illuminate\Contracts\View\View
+    {
+        return view('marketing.content', [
+            'contentHub' => $marketing->contentHubData(),
         ]);
+    }
+
+    public function storeContent(Request $request, ContentAiService $content): RedirectResponse
+    {
+        $data = $request->validate([
+            'platform' => ['required', 'string', 'in:facebook,instagram,linkedin,email,zalo,tiktok'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'prompt' => ['nullable', 'string', 'max:3000'],
+            'idea' => ['nullable', 'string', 'max:3000'],
+            'tone' => ['nullable', 'string', 'max:80'],
+            'audience' => ['nullable', 'string', 'max:160'],
+            'include_emoji' => ['nullable', 'boolean'],
+            'include_hashtags' => ['nullable', 'boolean'],
+        ]);
+
+        $draft = $content->generate($request->user(), array_replace($data, [
+            'include_emoji' => $request->boolean('include_emoji'),
+            'include_hashtags' => $request->boolean('include_hashtags'),
+        ]));
+
+        return redirect()
+            ->route('marketing.content.index', ['draft' => $draft->id, 'tab' => 'editor'])
+            ->with('success', 'Đã tạo bản thảo nội dung AI.');
+    }
+
+    public function updateContent(ContentAiDraft $contentDraft, Request $request, ContentAiService $content): RedirectResponse
+    {
+        $this->authorizeOwnedRecord($contentDraft->user_id);
+
+        $content->update($contentDraft, $request->validate([
+            'content' => ['required', 'string', 'max:12000'],
+        ]));
+
+        return redirect()
+            ->route('marketing.content.index', ['draft' => $contentDraft->id, 'tab' => 'history'])
+            ->with('success', 'Đã lưu bản thảo.');
+    }
+
+    public function destroyContent(ContentAiDraft $contentDraft): RedirectResponse
+    {
+        $this->authorizeOwnedRecord($contentDraft->user_id);
+        $contentDraft->delete();
+
+        return redirect()->route('marketing.content.index')->with('success', 'Đã xóa bản thảo.');
+    }
+
+    public function edgeTts(Request $request, EdgeTtsService $edgeTts): JsonResponse
+    {
+        $data = $request->validate([
+            'text' => ['required', 'string', 'max:12000'],
+            'voice' => ['nullable', 'string', 'in:vi-VN-HoaiMyNeural,vi-VN-NamMinhNeural'],
+            'tone' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        try {
+            return response()->json($edgeTts->synthesize(
+                $request->user(),
+                $data['text'],
+                $data['voice'] ?? 'vi-VN-HoaiMyNeural',
+                $data['tone'] ?? 'expert'
+            ));
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function brain(MarketingRepositoryInterface $marketing): \Illuminate\Contracts\View\View
+    {
+        return view('marketing.brain', [
+            'brain' => $marketing->brainTrainingData(),
+        ]);
+    }
+
+    public function storeBrainMemory(Request $request, BrainTrainingService $brain): RedirectResponse
+    {
+        $data = $request->validate([
+            'category' => ['required', 'string', 'in:voice_style,usp,faq,offer,customer_insight,brand_rule'],
+            'topic' => ['nullable', 'string', 'max:160'],
+            'content' => ['required', 'string', 'max:12000'],
+        ]);
+
+        $brain->store($request->user(), $data);
+
+        return redirect()->route('marketing.brain.index', ['category' => $data['category']])->with('success', 'Đã lưu vào bộ nhớ AI.');
+    }
+
+    public function destroyBrainMemory(BrainMemory $brainMemory): RedirectResponse
+    {
+        $this->authorizeOwnedRecord($brainMemory->user_id);
+        $brainMemory->delete();
+
+        return redirect()->route('marketing.brain.index')->with('success', 'Đã xóa dữ liệu huấn luyện.');
     }
 
     public function scenes(MarketingRepositoryInterface $marketing): \Illuminate\Contracts\View\View
@@ -189,10 +293,13 @@ class MarketingController extends Controller
             'style' => ['required', 'string', 'max:80'],
             'aspect_ratio' => ['required', 'string', 'in:9:16,16:9,1:1,4:5'],
             'audience' => ['nullable', 'string', 'max:160'],
-            'prompt' => ['required', 'string', 'max:3000'],
+            'prompt' => ['nullable', 'string', 'max:3000'],
+            'random' => ['nullable', 'boolean'],
         ]);
 
-        $generation = $images->generate($request->user(), $data);
+        $generation = $images->generate($request->user(), array_replace($data, [
+            'random' => $request->boolean('random'),
+        ]));
 
         return redirect()
             ->route('marketing.images')
@@ -237,5 +344,10 @@ class MarketingController extends Controller
         $images->delete($aiImageGeneration);
 
         return back()->with('success', 'Đã xóa hình ảnh AI.');
+    }
+
+    private function authorizeOwnedRecord(int $userId): void
+    {
+        abort_unless(auth()->id() === $userId || auth()->user()?->role === 'admin', 403);
     }
 }

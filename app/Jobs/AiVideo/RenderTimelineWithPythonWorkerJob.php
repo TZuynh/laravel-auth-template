@@ -4,6 +4,8 @@ namespace App\Jobs\AiVideo;
 
 use App\Enums\RenderJobStatus;
 use App\Models\RenderJob;
+use App\Models\VideoGeneration;
+use App\Models\VideoVersion;
 use App\Services\AiVideo\PythonAiWorkerClient;
 use App\Services\AiVideo\TimelineManifestBuilder;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -49,6 +51,8 @@ class RenderTimelineWithPythonWorkerJob implements ShouldQueue
                 'output_payload' => $response,
                 'finished_at' => now(),
             ]);
+
+            $this->markVersionCompleted($renderJob, $response['output_path'] ?? null);
         } catch (Throwable $exception) {
             $renderJob->update([
                 'status' => RenderJobStatus::Failed,
@@ -57,8 +61,70 @@ class RenderTimelineWithPythonWorkerJob implements ShouldQueue
                 'finished_at' => now(),
             ]);
 
+            $this->markVersionFailed($renderJob, $exception);
+
             throw $exception;
         }
     }
-}
 
+    private function markVersionCompleted(RenderJob $renderJob, ?string $outputPath): void
+    {
+        $version = $this->version($renderJob);
+        if (!$version) {
+            return;
+        }
+
+        $version->update([
+            'status' => 'completed',
+            'progress' => 100,
+            'output_url' => $outputPath,
+        ]);
+
+        if ($version->generation) {
+            $this->refreshGenerationStatus($version->generation);
+        }
+    }
+
+    private function markVersionFailed(RenderJob $renderJob, Throwable $exception): void
+    {
+        $version = $this->version($renderJob);
+        if (!$version) {
+            return;
+        }
+
+        $version->update([
+            'status' => 'failed',
+            'progress' => 100,
+            'error_message' => Str::limit($exception->getMessage(), 2000),
+        ]);
+
+        if ($version->generation) {
+            $this->refreshGenerationStatus($version->generation);
+        }
+    }
+
+    private function version(RenderJob $renderJob): ?VideoVersion
+    {
+        $versionId = data_get($renderJob->input_payload, 'video_version_id');
+
+        return $versionId
+            ? VideoVersion::query()->with('generation.versions')->find($versionId)
+            : VideoVersion::query()->with('generation.versions')->where('render_job_id', $renderJob->id)->first();
+    }
+
+    private function refreshGenerationStatus(VideoGeneration $generation): void
+    {
+        $generation->load('versions');
+        $completed = $generation->versions->where('status', 'completed')->count();
+        $failed = $generation->versions->where('status', 'failed')->count();
+        $running = $generation->versions
+            ->whereIn('status', ['queued', 'processing', 'assets_ready', 'rendering'])
+            ->count();
+
+        $generation->update([
+            'completed_versions' => $completed,
+            'failed_versions' => $failed,
+            'status' => $running > 0 ? 'processing' : ($failed > 0 ? 'partial' : 'completed'),
+        ]);
+    }
+}

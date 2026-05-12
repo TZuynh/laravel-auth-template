@@ -12,12 +12,12 @@ class ForgotPasswordController extends Controller
         return view('auth.forgot-password');
     }
 
-    public function sendResetLinkEmail(ForgotPasswordRequest $request, AuthRepositoryInterface $authRepository)
+    public function sendResetCodeEmail(ForgotPasswordRequest $request, AuthRepositoryInterface $authRepository)
     {
-        $status = $authRepository->sendResetLink($request->only('email'));
+        $authRepository->sendResetCode($request->only('email'));
 
-        return $status === 'passwords.sent'
-            ? back()->with(['status' => __($status)])
-            : back()->withErrors(['email' => __($status)]);
+        return redirect()
+            ->route('password.reset', ['email' => $request->string('email')->toString()])
+            ->with('status', 'A 6-digit reset code has been sent to your email.');
     }
 }

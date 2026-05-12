@@ -15,5 +15,9 @@ interface AuthRepositoryInterface
 
     public function resetPassword(array $data): string;
 
+    public function sendResetCode(array $data): string;
+
+    public function resetPasswordWithCode(array $data): string;
+
     public function logout(Request $request): void;
 }

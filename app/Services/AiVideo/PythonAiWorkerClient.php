@@ -13,6 +13,11 @@ class PythonAiWorkerClient
         return $this->post('/api/v1/script/generate', $payload);
     }
 
+    public function generateBulkVideos(array $payload): array
+    {
+        return $this->post('/api/v1/bulk/generate', $payload);
+    }
+
     public function splitScenes(array $payload): array
     {
         return $this->post('/api/v1/scenes/split', $payload);
@@ -77,4 +82,3 @@ class PythonAiWorkerClient
             );
     }
 }
-

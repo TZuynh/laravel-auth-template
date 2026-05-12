@@ -105,4 +105,9 @@ SVG;
     {
         return $this->hasMany(VideoProject::class);
     }
+
+    public function videoGenerations(): HasMany
+    {
+        return $this->hasMany(VideoGeneration::class);
+    }
 }

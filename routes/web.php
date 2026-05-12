@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\ActivityNotificationController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\ErpController;
@@ -28,8 +30,10 @@ Route::middleware('locale')->group(function () {
     Route::middleware('guest')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-        Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-        Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+        Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+        Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetCodeEmail'])->name('password.email');
+        Route::get('/reset-password', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+        Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
     });
 
     Route::middleware('auth')->group(function () {
@@ -67,9 +71,31 @@ Route::middleware('locale')->group(function () {
         Route::get('/admin/marketing', [MarketingController::class, 'index'])
             ->middleware('admin')
             ->name('marketing.index');
-        Route::get('/admin/marketing/scenes', [MarketingController::class, 'scenes'])
+
+        Route::get('/admin/marketing/content', [MarketingController::class, 'content'])
             ->middleware('admin')
-            ->name('marketing.scenes');
+            ->name('marketing.content.index');
+        Route::post('/admin/marketing/content', [MarketingController::class, 'storeContent'])
+            ->middleware('admin')
+            ->name('marketing.content.store');
+        Route::post('/admin/marketing/content/edge-tts', [MarketingController::class, 'edgeTts'])
+            ->middleware('admin')
+            ->name('marketing.content.edge-tts');
+        Route::patch('/admin/marketing/content/{contentDraft}', [MarketingController::class, 'updateContent'])
+            ->middleware('admin')
+            ->name('marketing.content.update');
+        Route::delete('/admin/marketing/content/{contentDraft}', [MarketingController::class, 'destroyContent'])
+            ->middleware('admin')
+            ->name('marketing.content.destroy');
+        Route::get('/admin/marketing/brain', [MarketingController::class, 'brain'])
+            ->middleware('admin')
+            ->name('marketing.brain.index');
+        Route::post('/admin/marketing/brain', [MarketingController::class, 'storeBrainMemory'])
+            ->middleware('admin')
+            ->name('marketing.brain.store');
+        Route::delete('/admin/marketing/brain/{brainMemory}', [MarketingController::class, 'destroyBrainMemory'])
+            ->middleware('admin')
+            ->name('marketing.brain.destroy');
         Route::get('/admin/marketing/images', [MarketingController::class, 'images'])
             ->middleware('admin')
             ->name('marketing.images');
@@ -79,31 +105,60 @@ Route::middleware('locale')->group(function () {
         Route::delete('/admin/marketing/images/{aiImageGeneration}', [MarketingController::class, 'destroyImage'])
             ->middleware('admin')
             ->name('marketing.images.destroy');
-        Route::get('/admin/marketing/render-history', [MarketingController::class, 'renderHistory'])
+
+        $legacyMarketingVideoRedirect = fn (...$ignored) => redirect()
+            ->route('marketing.content.index')
+            ->with('warning', 'Chức năng Video AI đã được thay bằng Content AI, AI Images và Brain AI.');
+
+        Route::get('/admin/marketing/bulk-video', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.bulk-video.index');
+        Route::post('/admin/marketing/bulk-video', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.bulk-video.store');
+        Route::get('/admin/marketing/bulk-video/{videoGeneration}', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.bulk-video.show');
+        Route::post('/admin/marketing/bulk-video/{videoGeneration}/run-now', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.bulk-video.run-now');
+        Route::post('/admin/marketing/bulk-video/{videoGeneration}/sync', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.bulk-video.sync');
+        Route::post('/admin/marketing/bulk-video/{videoGeneration}/cancel', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.bulk-video.cancel');
+        Route::delete('/admin/marketing/bulk-video/{videoGeneration}', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.bulk-video.destroy');
+        Route::get('/admin/marketing/scenes', $legacyMarketingVideoRedirect)
+            ->middleware('admin')
+            ->name('marketing.scenes');
+        Route::get('/admin/marketing/render-history', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.render-history');
-        Route::get('/admin/marketing/exports', [MarketingController::class, 'exports'])
+        Route::get('/admin/marketing/exports', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.exports');
-        Route::get('/admin/marketing/templates', [MarketingController::class, 'templates'])
+        Route::get('/admin/marketing/templates', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.templates');
-        Route::post('/admin/marketing/projects', [MarketingController::class, 'storeProject'])
+        Route::post('/admin/marketing/projects', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.projects.store');
-        Route::post('/admin/marketing/projects/{videoProject}/render', [MarketingController::class, 'renderProject'])
+        Route::post('/admin/marketing/projects/{videoProject}/render', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.projects.render');
-        Route::delete('/admin/marketing/render-history/clear-completed', [MarketingController::class, 'clearCompletedRenderJobs'])
+        Route::delete('/admin/marketing/render-history/clear-completed', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.render-history.clear-completed');
-        Route::delete('/admin/marketing/render-history/{renderJob}', [MarketingController::class, 'destroyRenderJob'])
+        Route::delete('/admin/marketing/render-history/{renderJob}', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.render-history.destroy');
-        Route::get('/admin/marketing/exports/{export}/download', [MarketingController::class, 'downloadExport'])
+        Route::get('/admin/marketing/exports/{export}/download', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.exports.download');
-        Route::delete('/admin/marketing/exports/{export}', [MarketingController::class, 'destroyExport'])
+        Route::delete('/admin/marketing/exports/{export}', $legacyMarketingVideoRedirect)
             ->middleware('admin')
             ->name('marketing.exports.destroy');
 

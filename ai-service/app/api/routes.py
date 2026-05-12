@@ -4,6 +4,8 @@ from app.core.settings import settings
 from app.schemas.video import (
     AssetRequest,
     AssetResponse,
+    BulkGenerationRequest,
+    BulkGenerationResponse,
     SceneSplitRequest,
     SceneSplitResponse,
     ScriptRequest,
@@ -16,6 +18,7 @@ from app.schemas.video import (
     VoiceResponse,
 )
 from app.services.asset_service import AssetService
+from app.services.bulk_service import BulkVideoService
 from app.services.ffmpeg_service import FFmpegService
 from app.services.script_service import ScriptService
 from app.services.subtitle_service import SubtitleService
@@ -38,6 +41,11 @@ def health() -> dict:
 @router.post("/script/generate", response_model=ScriptResponse, dependencies=[Depends(require_worker_key)])
 async def generate_script(payload: ScriptRequest) -> ScriptResponse:
     return await ScriptService().generate(payload)
+
+
+@router.post("/bulk/generate", response_model=BulkGenerationResponse, dependencies=[Depends(require_worker_key)])
+def generate_bulk_videos(payload: BulkGenerationRequest) -> BulkGenerationResponse:
+    return BulkVideoService().generate(payload)
 
 
 @router.post("/scenes/split", response_model=SceneSplitResponse, dependencies=[Depends(require_worker_key)])
@@ -68,4 +76,3 @@ def generate_subtitles(payload: SubtitleRequest) -> SubtitleResponse:
 @router.post("/render/timeline", response_model=TimelineRenderResponse, dependencies=[Depends(require_worker_key)])
 def render_timeline(payload: TimelineRenderRequest) -> TimelineRenderResponse:
     return FFmpegService().render_timeline(payload)
-
