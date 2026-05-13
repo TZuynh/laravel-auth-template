@@ -108,7 +108,7 @@ Route::middleware('locale')->group(function () {
 
         $legacyMarketingVideoRedirect = fn (...$ignored) => redirect()
             ->route('marketing.content.index')
-            ->with('warning', 'Chức năng Video AI đã được thay bằng Content AI, AI Images và Brain AI.');
+            ->with('warning', __('messages.marketing.legacy_video_warning'));
 
         Route::get('/admin/marketing/bulk-video', $legacyMarketingVideoRedirect)
             ->middleware('admin')

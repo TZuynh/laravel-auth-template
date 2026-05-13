@@ -29,7 +29,7 @@ class ContentAiService
 
         $includeEmoji = (bool) ($data['include_emoji'] ?? true);
         $includeHashtags = (bool) ($data['include_hashtags'] ?? true);
-        $audience = (string) ($data['audience'] ?? 'Mass (All) tại Việt Nam');
+        $audience = (string) ($data['audience'] ?? __('messages.marketing.content_ai.default_audience'));
         $brain = $this->brainContext($user, $prompt);
 
         $draft = ContentAiDraft::create([
@@ -105,6 +105,8 @@ class ContentAiService
             return null;
         }
 
+        $language = $this->languageName();
+
         $response = Http::baseUrl(rtrim((string) config('ai_providers.providers.openai.base_url', 'https://api.openai.com/v1'), '/'))
             ->withToken((string) config('ai_providers.providers.openai.api_key'))
             ->asJson()
@@ -114,11 +116,12 @@ class ContentAiService
                 'input' => [
                     [
                         'role' => 'system',
-                        'content' => 'You are a senior Vietnamese performance copywriter. Write substantial, natural, conversion-focused Vietnamese content. Use supplied brand memory strictly when relevant. Make every platform output structurally different, with a visible tone difference and enough detail to feel useful.',
+                        'content' => 'You are a senior performance copywriter. Write substantial, natural, conversion-focused content in the requested language. Use supplied brand memory strictly when relevant. Make every platform output structurally different, with a visible tone difference and enough detail to feel useful.',
                     ],
                     [
                         'role' => 'user',
                         'content' => json_encode([
+                            'language' => $language,
                             'platform' => $this->platformLabel($platform),
                             'platform_strategy' => $this->platformStrategy($platform),
                             'tone' => $tone,
@@ -135,16 +138,7 @@ class ContentAiService
                             'request_or_random_angle' => $prompt,
                             'brand_memory' => $brain,
                             'variation_seed' => now()->format('YmdHis') . '-' . random_int(1000, 9999),
-                            'output_rules' => [
-                                'Vietnamese by default unless user asks another language',
-                                'Open with a specific hook, not a generic greeting',
-                                'Write more complete content: 180-260 Vietnamese words for social posts, 220-320 words for email, 140-220 words for Zalo',
-                                'Use short mobile-first paragraphs but include enough context, benefit, objection handling, proof angle, and CTA',
-                                'The selected tone must visibly change word choice and rhythm',
-                                'CTA at the end',
-                                'Do not repeat the input prompt verbatim',
-                                'No markdown table',
-                            ],
+                            'output_rules' => $this->outputRules($platform, $language),
                         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                     ],
                 ],
@@ -183,6 +177,10 @@ class ContentAiService
         bool $includeHashtags,
         array $brain
     ): string {
+        if ($this->isEnglish()) {
+            return $this->fallbackContentEn($platform, $tone, $prompt, $product, $audience, $includeEmoji, $includeHashtags, $brain);
+        }
+
         $subject = $product?->name ?: $prompt;
         $emoji = $includeEmoji ? $this->emojiSet($platform) : ['', '', ''];
         $toneLine = $this->toneInstruction($tone);
@@ -243,6 +241,85 @@ class ContentAiService
                 "Góc triển khai: {$prompt}. Thay vì chỉ mô tả sản phẩm, hãy bắt đầu từ bối cảnh mà khách đang gặp: họ cần gì, đang lo điều gì và muốn kết quả ra sao sau khi lựa chọn.",
                 "Với {$subject}, nội dung nên làm rõ ba điểm: lợi ích chính, lý do tin cậy và hành động tiếp theo. Khi ba điểm này rõ, khách dễ hiểu hơn và cũng dễ nhắn tin hơn.",
                 trim("{$emoji[1]} Gợi ý nội dung: kể một tình huống thật, chỉ ra sai lầm thường gặp, sau đó cho thấy cách sản phẩm/dịch vụ giúp khách chọn đúng hơn."),
+                trim("{$emoji[2]} {$cta}"),
+            ],
+        };
+
+        $hashtags = $includeHashtags ? $this->hashtags($platform, $product) : '';
+
+        return trim(implode("\n\n", array_filter($blocks))) . $memoryLine . $hashtags;
+    }
+
+    private function fallbackContentEn(
+        string $platform,
+        string $tone,
+        string $prompt,
+        ?Product $product,
+        string $audience,
+        bool $includeEmoji,
+        bool $includeHashtags,
+        array $brain
+    ): string {
+        $subject = $product?->name ?: $prompt;
+        $emoji = $includeEmoji ? $this->emojiSet($platform) : ['', '', ''];
+        $toneLine = $this->toneInstruction($tone);
+        $memoryText = trim(implode(' ', array_column($brain, 'content')));
+        $memoryLine = $memoryText !== ''
+            ? "\n\n" . __('messages.marketing.content_ai.brand_memory') . ': ' . Str::limit($memoryText, 420)
+            : '';
+        $cta = match ($platform) {
+            'email' => 'Reply to this email to get guidance that fits your current need.',
+            'zalo' => 'Message us on Zalo today for quick support and the most relevant recommendation.',
+            'linkedin' => 'Connect with our team if you want to discuss the rollout in more depth.',
+            default => 'Send us a message to get advice, pricing, or an offer that fits your need.',
+        };
+
+        $blocks = match ($platform) {
+            'instagram' => [
+                trim("{$emoji[0]} " . $this->hook($tone, $subject)),
+                "Many posts look good, but the ones people stop for tell a story that feels close to a real need. For {$subject}, start from the feeling your customer is looking for: {$prompt}.",
+                "For {$audience}, the content should show the usage context, why it matters now, and one specific benefit they can easily imagine. Do not just say the product is good; describe the moment after the customer has made the right choice.",
+                trim("{$emoji[1]} Deployment idea: open with a question that touches the pain point, follow with 2-3 clear benefits, then add one trust-building detail such as material, process, customer feedback, or service commitment."),
+                'If customers are still comparing options, help them see why this choice is lower risk, easier to start, and more worth saving than continuing to search.',
+                trim("{$emoji[2]} {$cta}"),
+            ],
+            'tiktok' => [
+                trim("{$emoji[0]} Three-second hook: " . $this->hook($tone, $subject)),
+                "The challenge is that customers see too much content every day, so they only stay when the opening is specific enough. With {$prompt}, speak directly to the situation they are in instead of starting broadly.",
+                "Suggested flow: use the first 3 seconds for the pain point, the next 5 seconds to show what makes {$subject} different, the middle for proof or a simple example, and the ending for a small but clear action.",
+                trim("{$emoji[1]} Caption script: if you are considering {$subject}, pay attention to the detail many people miss. That detail shapes the post-purchase experience, the feeling of use, and long-term satisfaction."),
+                "This angle fits {$audience}. {$toneLine}",
+                $cta,
+            ],
+            'linkedin' => [
+                $this->hook($tone, $subject),
+                "In the current market, {$audience} needs more than a message that sounds good. They need a clear argument: why this problem matters, why the solution is reasonable, and why now is the right time to act.",
+                "Suggested angle: {$prompt}. From this angle, the post should move through market context, the customer problem, the cost of inaction, and how {$subject} can create practical change.",
+                'Emphasize concrete outcomes, credible proof, and decision logic. When the argument is strong, customers do not feel sold to; they feel helped to understand the problem better.',
+                "With a {$tone} tone, keep the rhythm professional, avoid exaggeration, and prioritize useful sentences.",
+                $cta,
+            ],
+            'email' => [
+                'Subject: ' . $this->hook($tone, $subject),
+                'Hi,',
+                "If you are considering {$subject}, here is a useful angle: {$prompt}. This is not only about choosing a product; it is about reducing search time, avoiding a wrong choice, and feeling more certain before you decide.",
+                'Customers usually need clarity before they act: who this is for, what pain point it solves, where the difference is, and whether the next step is simple. The message should lead with a real benefit, then support it with a reason to trust.',
+                "For {$audience}, highlight outcomes they can picture: saved time, more confidence, a better experience, or clearer results after use.",
+                $cta,
+            ],
+            'zalo' => [
+                trim("{$emoji[0]} " . $this->hook($tone, $subject)),
+                "Quick suggestion for {$audience}: {$prompt}.",
+                'If you are still considering options, start with your real need: what problem do you want to solve, how soon do you need the result, and what criteria are non-negotiable?',
+                'Our team can advise around your exact case with short, clear suggestions that do not waste your time.',
+                $cta,
+            ],
+            default => [
+                trim("{$emoji[0]} " . $this->hook($tone, $subject)),
+                "This post is for {$audience}. {$toneLine}",
+                "Angle: {$prompt}. Instead of only describing the product, start from the customer context: what they need, what they are worried about, and what outcome they want after choosing.",
+                "For {$subject}, the content should clarify three things: the main benefit, the reason to trust it, and the next action. When those are clear, customers understand faster and are more likely to message.",
+                trim("{$emoji[1]} Content idea: tell a real situation, point out a common mistake, then show how the product or service helps the customer choose better."),
                 trim("{$emoji[2]} {$cta}"),
             ],
         };
@@ -364,7 +441,7 @@ class ContentAiService
 
     private function title(string $platform, ?Product $product, string $prompt): string
     {
-        return $this->platformLabel($platform) . ' - ' . Str::limit($product?->name ?: Str::headline($prompt ?: 'Bài viết mới'), 72);
+        return $this->platformLabel($platform) . ' - ' . Str::limit($product?->name ?: Str::headline($prompt ?: __('messages.marketing.content_ai.new_post')), 72);
     }
 
     private function platformLabel(string $platform): string
@@ -381,7 +458,47 @@ class ContentAiService
 
     private function randomIdea(string $platform, ?Product $product): string
     {
-        $subject = $product?->name ?: 'sản phẩm/dịch vụ';
+        $subject = $product?->name ?: __('messages.marketing.content_ai.product_service_subject');
+
+        if ($this->isEnglish()) {
+            $ideas = [
+                'facebook' => [
+                    "Tell a before-and-after customer story after using {$subject}",
+                    "Start a discussion post about common mistakes when choosing {$subject}",
+                    "Create a light engagement game that keeps {$subject} memorable",
+                ],
+                'instagram' => [
+                    "Carousel caption for five visuals around the lifestyle of {$subject}",
+                    "Premium visual post with an emotional hook for {$subject}",
+                    "Short story caption that makes people want to save {$subject}",
+                ],
+                'linkedin' => [
+                    "Expert angle on the business value of {$subject}",
+                    "Analysis post about the market problem {$subject} solves",
+                    'Thought leadership post that makes the brand feel more credible',
+                ],
+                'email' => [
+                    'Customer care email for existing buyers with a clearly justified offer',
+                    "Benefit-led email introducing {$subject} in a 30-second read",
+                    'Personalized return email for inactive customers',
+                ],
+                'zalo' => [
+                    "Short message announcing today's offer for {$subject}",
+                    'Zalo care script for customers who are still considering',
+                    'Message that recalls the customer need and invites a quick reply',
+                ],
+                'tiktok' => [
+                    'Three-second hook for a TikTok video about customer pain points',
+                    "Trend-aware TikTok caption that still sells {$subject}",
+                    'Short caption script with problem, solution, and quick CTA',
+                ],
+            ];
+
+            $pool = $ideas[$platform] ?? $ideas['facebook'];
+
+            return $pool[array_rand($pool)];
+        }
+
         $ideas = [
             'facebook' => [
                 "Kể câu chuyện khách hàng trước và sau khi dùng {$subject}",
@@ -420,6 +537,29 @@ class ContentAiService
         return $pool[array_rand($pool)];
     }
 
+    private function languageName(): string
+    {
+        return $this->isEnglish() ? 'English' : 'Vietnamese';
+    }
+
+    private function outputRules(string $platform, string $language): array
+    {
+        $wordRule = $language === 'English'
+            ? 'Write complete content: 180-260 English words for social posts, 220-320 words for email, 140-220 words for Zalo'
+            : 'Write complete content: 180-260 Vietnamese words for social posts, 220-320 words for email, 140-220 words for Zalo';
+
+        return [
+            "Write in {$language} unless the user explicitly asks for another language",
+            'Open with a specific hook, not a generic greeting',
+            $wordRule,
+            'Use short mobile-first paragraphs but include enough context, benefit, objection handling, proof angle, and CTA',
+            'The selected tone must visibly change word choice and rhythm',
+            'CTA at the end',
+            'Do not repeat the input prompt verbatim',
+            'No markdown table',
+        ];
+    }
+
     private function platformStrategy(string $platform): string
     {
         return match ($platform) {
@@ -432,8 +572,23 @@ class ContentAiService
         };
     }
 
+    private function isEnglish(): bool
+    {
+        return app()->getLocale() === 'en';
+    }
+
     private function toneInstruction(string $tone): string
     {
+        if ($this->isEnglish()) {
+            return match ($tone) {
+                'friendly' => 'Friendly, warm, low-jargon language that feels like real customer advice.',
+                'premium' => 'Premium, concise, restrained language focused on experience and trust.',
+                'viral' => 'Fast, punchy language with a strong hook, short sentences, and scroll-stopping energy.',
+                'direct' => 'Direct sales language with clear benefits, a strong CTA, and no wandering.',
+                default => 'Expert language that is clear, well-argued, trustworthy, and conversion-focused.',
+            };
+        }
+
         return match ($tone) {
             'friendly' => 'Giọng văn thân thiện, gần gũi, ít thuật ngữ, tạo cảm giác đang tư vấn thật.',
             'premium' => 'Giọng văn cao cấp, tinh gọn, ít phóng đại, nhấn vào trải nghiệm và sự tin cậy.',
@@ -445,6 +600,16 @@ class ContentAiService
 
     private function hook(string $tone, string $subject): string
     {
+        if ($this->isEnglish()) {
+            return match ($tone) {
+                'friendly' => "You may need {$subject} in a simpler way.",
+                'premium' => "{$subject} does not need to be loud to be worth noticing.",
+                'viral' => "Do not buy {$subject} before you know this.",
+                'direct' => "If you need clearer results, start with {$subject}.",
+                default => "A useful angle to consider about {$subject}.",
+            };
+        }
+
         return match ($tone) {
             'friendly' => "Có thể bạn đang cần {$subject} theo cách đơn giản hơn.",
             'premium' => "{$subject} không cần ồn ào để trở nên đáng chú ý.",

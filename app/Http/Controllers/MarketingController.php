@@ -60,7 +60,7 @@ class MarketingController extends Controller
 
         return redirect()
             ->route('marketing.content.index', ['draft' => $draft->id, 'tab' => 'editor'])
-            ->with('success', 'Đã tạo bản thảo nội dung AI.');
+            ->with('success', __('messages.marketing.content_ai.flash_created'));
     }
 
     public function updateContent(ContentAiDraft $contentDraft, Request $request, ContentAiService $content): RedirectResponse
@@ -73,7 +73,7 @@ class MarketingController extends Controller
 
         return redirect()
             ->route('marketing.content.index', ['draft' => $contentDraft->id, 'tab' => 'history'])
-            ->with('success', 'Đã lưu bản thảo.');
+            ->with('success', __('messages.marketing.content_ai.flash_updated'));
     }
 
     public function destroyContent(ContentAiDraft $contentDraft): RedirectResponse
@@ -81,14 +81,14 @@ class MarketingController extends Controller
         $this->authorizeOwnedRecord($contentDraft->user_id);
         $contentDraft->delete();
 
-        return redirect()->route('marketing.content.index')->with('success', 'Đã xóa bản thảo.');
+        return redirect()->route('marketing.content.index')->with('success', __('messages.marketing.content_ai.flash_deleted'));
     }
 
     public function edgeTts(Request $request, EdgeTtsService $edgeTts): JsonResponse
     {
         $data = $request->validate([
             'text' => ['required', 'string', 'max:12000'],
-            'voice' => ['nullable', 'string', 'in:vi-VN-HoaiMyNeural,vi-VN-NamMinhNeural'],
+            'voice' => ['nullable', 'string', 'in:' . implode(',', array_keys(EdgeTtsService::voices()))],
             'tone' => ['nullable', 'string', 'max:80'],
         ]);
 
@@ -96,7 +96,7 @@ class MarketingController extends Controller
             return response()->json($edgeTts->synthesize(
                 $request->user(),
                 $data['text'],
-                $data['voice'] ?? 'vi-VN-HoaiMyNeural',
+                $data['voice'] ?? EdgeTtsService::defaultVoice(),
                 $data['tone'] ?? 'expert'
             ));
         } catch (\Throwable $exception) {

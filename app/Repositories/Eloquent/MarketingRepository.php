@@ -15,6 +15,7 @@ use App\Models\VideoProject;
 use App\Models\VoiceProfile;
 use App\Repositories\Contracts\MarketingRepositoryInterface;
 use App\Repositories\Contracts\ProductRepositoryInterface;
+use App\Services\Marketing\EdgeTtsService;
 
 class MarketingRepository implements MarketingRepositoryInterface
 {
@@ -208,12 +209,14 @@ class MarketingRepository implements MarketingRepositoryInterface
             ],
             'platform_ideas' => $this->platformIdeas(),
             'tones' => [
-                ['value' => 'expert', 'label' => 'Expert'],
-                ['value' => 'friendly', 'label' => 'Thân thiện'],
-                ['value' => 'premium', 'label' => 'Cao cấp'],
-                ['value' => 'viral', 'label' => 'Viral'],
-                ['value' => 'direct', 'label' => 'Bán hàng trực diện'],
+                ['value' => 'expert', 'label' => __('messages.marketing.content_ai.tones.expert')],
+                ['value' => 'friendly', 'label' => __('messages.marketing.content_ai.tones.friendly')],
+                ['value' => 'premium', 'label' => __('messages.marketing.content_ai.tones.premium')],
+                ['value' => 'viral', 'label' => __('messages.marketing.content_ai.tones.viral')],
+                ['value' => 'direct', 'label' => __('messages.marketing.content_ai.tones.direct')],
             ],
+            'tts_voices' => EdgeTtsService::voiceOptionsForLocale(app()->getLocale()),
+            'tts_voice_labels' => EdgeTtsService::voiceLabels(),
             'drafts' => $drafts
                 ->map(fn (ContentAiDraft $draft): array => $this->contentDraftPayload($draft))
                 ->all(),
@@ -513,49 +516,21 @@ class MarketingRepository implements MarketingRepositoryInterface
 
     private function platformIdeas(): array
     {
-        return [
-            'facebook' => [
-                'Kể câu chuyện khách hàng trước và sau khi sử dụng sản phẩm',
-                'Bài post mở thảo luận về sai lầm thường gặp của khách hàng',
-                'Minigame nhẹ nhàng để tăng bình luận và inbox',
-            ],
-            'instagram' => [
-                'Caption carousel 5 ảnh với hook cảm xúc và CTA lưu bài',
-                'Bài đăng visual premium cho sản phẩm mới',
-                'Story caption tạo cảm giác muốn chia sẻ ngay',
-            ],
-            'linkedin' => [
-                'Bài phân tích insight thị trường theo góc nhìn chuyên gia',
-                'Thought leadership về vấn đề khách hàng đang gặp',
-                'Bài chia sẻ case study ngắn, rõ kết quả',
-            ],
-            'email' => [
-                'Email chăm sóc khách cũ bằng ưu đãi có lý do rõ ràng',
-                'Email giới thiệu lợi ích chính trong 30 giây đọc',
-                'Email nhắc khách quay lại với mở đầu cá nhân hóa',
-            ],
-            'zalo' => [
-                'Tin nhắn ngắn thông báo ưu đãi hôm nay',
-                'Kịch bản chăm sóc khách đang phân vân',
-                'Tin nhắn gợi lại nhu cầu và mời phản hồi nhanh',
-            ],
-            'tiktok' => [
-                'Hook 3 giây cho video về nỗi đau của khách',
-                'Caption bắt trend nhưng vẫn có CTA bán hàng',
-                'Kịch bản short caption theo problem, solution, CTA',
-            ],
-        ];
+        $ideas = __('messages.marketing.content_ai.ideas');
+
+        return is_array($ideas) ? $ideas : [];
     }
 
     private function contentDraftPayload(ContentAiDraft $draft): array
     {
         return [
             'id' => $draft->id,
-            'title' => $draft->title ?: 'Bản thảo nội dung',
+            'title' => $draft->title ?: __('messages.marketing.content_ai.draft_title'),
             'platform' => $draft->platform,
             'platform_label' => $draft->metadata['platform_label'] ?? ucfirst($draft->platform),
             'product' => $draft->product?->name,
             'status' => $draft->status,
+            'status_label' => $this->contentDraftStatusLabel((string) $draft->status),
             'tone' => $draft->tone,
             'audience' => $draft->audience,
             'content' => $draft->content,
@@ -563,6 +538,16 @@ class MarketingRepository implements MarketingRepositoryInterface
             'source' => $draft->metadata['source'] ?? 'local',
             'created' => $draft->created_at?->format('d/m/Y H:i') ?? '-',
         ];
+    }
+
+    private function contentDraftStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'running' => __('messages.marketing.content_ai.status_running'),
+            'completed' => __('messages.marketing.content_ai.status_completed'),
+            'saved' => __('messages.marketing.content_ai.status_saved'),
+            default => __('messages.marketing.content_ai.status_draft'),
+        };
     }
 
     private function fallbackProducts(): array

@@ -16,18 +16,20 @@ use Throwable;
 class EdgeTtsService
 {
     private const VOICES = [
-        'vi-VN-HoaiMyNeural' => 'Nữ Hoài My',
-        'vi-VN-NamMinhNeural' => 'Nam Minh',
+        'vi-VN-HoaiMyNeural' => ['label_key' => 'voice_female_vi', 'locale' => 'vi', 'gender' => 'female'],
+        'vi-VN-NamMinhNeural' => ['label_key' => 'voice_male_vi', 'locale' => 'vi', 'gender' => 'male'],
+        'en-US-JennyNeural' => ['label_key' => 'voice_female_en', 'locale' => 'en', 'gender' => 'female'],
+        'en-US-GuyNeural' => ['label_key' => 'voice_male_en', 'locale' => 'en', 'gender' => 'male'],
     ];
 
     public function synthesize(User $user, string $text, string $voice, string $tone = 'expert'): array
     {
         $text = $this->normalizeText($text);
         if ($text === '') {
-            throw new RuntimeException('Nội dung đọc đang trống.');
+            throw new RuntimeException(__('messages.marketing.content_ai.empty_speech'));
         }
 
-        $voice = array_key_exists($voice, self::VOICES) ? $voice : 'vi-VN-HoaiMyNeural';
+        $voice = array_key_exists($voice, self::VOICES) ? $voice : self::defaultVoice();
         $rate = $this->rate($tone);
         $hash = sha1($user->id . '|' . $voice . '|' . $rate . '|' . $text);
         $relativePath = "content-voice/{$user->id}/{$hash}.mp3";
@@ -43,7 +45,7 @@ class EdgeTtsService
             'url' => asset('storage/' . $relativePath),
             'path' => $relativePath,
             'voice' => $voice,
-            'voice_label' => self::VOICES[$voice],
+            'voice_label' => self::voiceLabel($voice),
             'rate' => $rate,
             'cached' => $cached,
         ];
@@ -51,7 +53,43 @@ class EdgeTtsService
 
     public static function voices(): array
     {
-        return self::VOICES;
+        return self::voiceLabels();
+    }
+
+    public static function voiceLabels(): array
+    {
+        return collect(self::VOICES)
+            ->mapWithKeys(fn (array $voice, string $value): array => [$value => self::voiceLabel($value)])
+            ->all();
+    }
+
+    public static function voiceOptionsForLocale(?string $locale = null): array
+    {
+        $locale = in_array($locale, ['vi', 'en'], true) ? $locale : app()->getLocale();
+
+        return collect(self::VOICES)
+            ->filter(fn (array $voice): bool => $voice['locale'] === $locale)
+            ->map(fn (array $voice, string $value): array => [
+                'value' => $value,
+                'label' => self::voiceLabel($value),
+                'gender' => $voice['gender'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    public static function defaultVoice(?string $locale = null): string
+    {
+        return ($locale ?: app()->getLocale()) === 'en'
+            ? 'en-US-JennyNeural'
+            : 'vi-VN-HoaiMyNeural';
+    }
+
+    private static function voiceLabel(string $voice): string
+    {
+        $labelKey = self::VOICES[$voice]['label_key'] ?? self::VOICES[self::defaultVoice()]['label_key'];
+
+        return __('messages.marketing.content_ai.' . $labelKey);
     }
 
     private function runEdgeTts(string $voice, string $rate, string $text, string $absolutePath): void
@@ -78,8 +116,8 @@ class EdgeTtsService
         }
 
         throw new RuntimeException(
-            'Edge TTS chưa chạy được. Cài bằng `pip install edge-tts` và đảm bảo lệnh `edge-tts` có trong PATH. '
-            . ($lastError ? "Chi tiết: {$lastError}" : '')
+            __('messages.marketing.content_ai.edge_tts_install_help') . ' '
+            . ($lastError ? __('messages.marketing.content_ai.error_detail') . ": {$lastError}" : '')
         );
     }
 
